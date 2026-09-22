@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Member = {
   id: string;
@@ -49,35 +49,79 @@ export default function Home() {
   const [toast, setToast] = useState("");
   const toastTimeoutRef = useRef<number | null>(null);
 
+  const fetchTeamData = useCallback(async () => {
+    const [membersResponse, teamResponse] = await Promise.all([
+      fetch("/api/team/members", {
+        cache: "no-store",
+      }),
+      fetch("/api/team", {
+        cache: "no-store",
+      }),
+    ]);
+
+    if (!membersResponse.ok || !teamResponse.ok) {
+      throw new Error("データの取得に失敗しました");
+    }
+
+    const membersData: MembersResponse = await membersResponse.json();
+    const teamData: TeamResponse = await teamResponse.json();
+
+    return {
+      members: membersData.members,
+      team: teamData.team,
+    };
+  }, []);
+
+  function applyLoadedData(data: { members: Member[]; team: Team }) {
+    setAllMembers(data.members);
+    setTeam(data.team);
+    setQuery("");
+  }
+
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const data = await fetchTeamData();
+      applyLoadedData(data);
+    } catch (err) {
+      console.error(err);
+      setError("Slackユーザーまたはチーム情報の取得に失敗しました。");
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchTeamData]);
+
   useEffect(() => {
-    async function loadMembers() {
+    let active = true;
+
+    async function initialize() {
       try {
         setLoading(true);
         setError("");
-        const [membersResponse, teamResponse] = await Promise.all([
-          fetch("/api/team/members", {
-            cache: "no-store",
-          }),
-          fetch("/api/team", {
-            cache: "no-store",
-          }),
-        ]);
-        if (!membersResponse.ok || !teamResponse.ok) {
-          throw new Error("データの取得に失敗しました");
+        const data = await fetchTeamData();
+        if (!active) {
+          return;
         }
-        const membersData: MembersResponse = await membersResponse.json();
-        const teamData: TeamResponse = await teamResponse.json();
-        setAllMembers(membersData.members);
-        setTeam(teamData.team);
+        applyLoadedData(data);
       } catch (err) {
         console.error(err);
-        setError("Slackユーザーまたはチーム情報の取得に失敗しました。");
+        if (active) {
+          setError("Slackユーザーまたはチーム情報の取得に失敗しました。");
+        }
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     }
-    loadMembers();
-  }, []);
+
+    void initialize();
+
+    return () => {
+      active = false;
+    };
+  }, [fetchTeamData]);
 
   useEffect(() => {
     return () => {
@@ -361,7 +405,7 @@ export default function Home() {
                           {member.avatarUrl ? (
                             <img
                               src={member.avatarUrl}
-                              alt=""
+                              alt={`${member.name}のプロフィール画像`}
                               className="avatar"
                               style={{
                                 objectFit: "cover",
@@ -412,7 +456,7 @@ export default function Home() {
                         {member.avatarUrl ? (
                           <img
                             src={member.avatarUrl}
-                            alt=""
+                            alt={`${member.name}のプロフィール画像`}
                             className="avatar"
                             style={{
                               objectFit: "cover",
@@ -458,7 +502,7 @@ export default function Home() {
                 <div className="actions">
                   <button
                     className="btn"
-                    onClick={() => window.location.reload()}
+                    onClick={() => void loadData()}
                   >
                     キャンセル
                   </button>
