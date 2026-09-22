@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Member = {
@@ -90,6 +91,12 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  }, [fetchTeamData]);
+
+  const refreshData = useCallback(async () => {
+    const data = await fetchTeamData();
+    applyLoadedData(data);
+    return data;
   }, [fetchTeamData]);
 
   useEffect(() => {
@@ -234,8 +241,7 @@ export default function Home() {
         throw new Error("保存に失敗しました");
       }
 
-      const data: TeamResponse = await response.json();
-      setTeam(data.team);
+      const data = await refreshData();
       showToast(`「${data.team.name}」を保存しました`);
     } catch (err) {
       console.error(err);
@@ -244,6 +250,7 @@ export default function Home() {
   }
   
   function createNewTeam() {
+    setError("");
     setTeam({
       ...emptyTeam,
       members: [],
@@ -403,10 +410,12 @@ export default function Home() {
                           key={member.id}
                         >
                           {member.avatarUrl ? (
-                            <img
+                            <Image
                               src={member.avatarUrl}
                               alt={`${member.name}のプロフィール画像`}
                               className="avatar"
+                              width={42}
+                              height={42}
                               style={{
                                 objectFit: "cover",
                               }}
@@ -454,10 +463,12 @@ export default function Home() {
                         key={member.id}
                       >
                         {member.avatarUrl ? (
-                          <img
+                          <Image
                             src={member.avatarUrl}
                             alt={`${member.name}のプロフィール画像`}
                             className="avatar"
+                            width={42}
+                            height={42}
                             style={{
                               objectFit: "cover",
                             }}
