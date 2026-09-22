@@ -268,6 +268,9 @@ export default function Home() {
         showToast(`「${data.team.name}」を保存しました`);
       } catch (err) {
         console.error(err);
+        setError(
+          "保存は完了しましたが、最新のチーム情報の再取得に失敗しました。再読み込みしてください。"
+        );
         showToast(`「${teamName}」を保存しました。最新状態の再読込に失敗しました。`);
       }
     } catch (err) {
@@ -304,27 +307,27 @@ export default function Home() {
         <div className="side-section-title">
           チャンネル
         </div>
-        <button className="side-item">
+        <div className="side-item">
           # general
-        </button>
-        <button className="side-item">
+        </div>
+        <div className="side-item">
           # development
-        </button>
-        <button className="side-item">
+        </div>
+        <div className="side-item">
           # design
-        </button>
+        </div>
         <div className="side-section-title">
           チーム
         </div>
-        <button className="side-item active">
+        <div className="side-item active">
           🟢 開発チーム
-        </button>
-        <button className="side-item">
+        </div>
+        <div className="side-item">
           🔵 デザインチーム
-        </button>
-        <button className="side-item">
+        </div>
+        <div className="side-item">
           🟣 営業チーム
-        </button>
+        </div>
         <button
           className="side-item create-team"
           onClick={createNewTeam}
@@ -433,10 +436,18 @@ export default function Home() {
                 </div>
                 {query && (
                   <div
-                    className="search-results"
+                    className="search-status"
                     aria-atomic="true"
                     aria-live="polite"
+                    role="status"
                   >
+                    {searchResults.length > 0
+                      ? `${searchResults.length}件の候補が見つかりました。`
+                      : "候補が見つかりません。"}
+                  </div>
+                )}
+                {query && (
+                  <div className="search-results">
                     {searchResults.length > 0 ? (
                       searchResults.map((member) => (
                         <div

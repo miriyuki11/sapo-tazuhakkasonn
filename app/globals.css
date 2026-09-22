@@ -213,6 +213,12 @@ button {
   overflow: hidden;
 }
 
+.search-status {
+  margin: -6px 0 14px;
+  color: #777277;
+  font-size: 13px;
+}
+
 .member-row {
   display: flex;
   align-items: center;
