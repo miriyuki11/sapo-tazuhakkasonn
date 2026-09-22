@@ -1,35 +1,11 @@
-import { updateTeam } from "../data";
-
-type TeamRequestBody = {
-  name?: unknown;
-  description?: unknown;
-  memberIds?: unknown;
-};
-
-function parseTeamRequestBody(body: TeamRequestBody) {
-  if (
-    typeof body.name !== "string" ||
-    !body.name.trim() ||
-    typeof body.description !== "string" ||
-    !Array.isArray(body.memberIds) ||
-    !body.memberIds.every((memberId) => typeof memberId === "string")
-  ) {
-    return null;
-  }
-
-  return {
-    name: body.name.trim(),
-    description: body.description.trim(),
-    memberIds: body.memberIds,
-  };
-}
+import { parseTeamRequestBody, updateTeam } from "../data";
 
 export async function PATCH(
   request: Request,
-  context: RouteContext<"/api/team/[id]">
+  context: { params: Promise<{ id: string }> }
 ) {
   const { id } = await context.params;
-  const body: TeamRequestBody = await request.json();
+  const body = await request.json();
   const payload = parseTeamRequestBody(body);
 
   if (!payload) {

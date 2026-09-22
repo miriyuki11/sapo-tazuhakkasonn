@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Member = {
   id: string;
@@ -47,6 +47,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
+  const toastTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     async function loadMembers() {
@@ -76,6 +77,14 @@ export default function Home() {
       }
     }
     loadMembers();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current !== null) {
+        window.clearTimeout(toastTimeoutRef.current);
+      }
+    };
   }, []);
   
   const searchResults = useMemo(() => {
@@ -146,10 +155,23 @@ export default function Home() {
       memberIds: currentTeam.members.map((member) => member.id),
     };
   }
+
+  function showToast(message: string, duration = 2500) {
+    setToast(message);
+
+    if (toastTimeoutRef.current !== null) {
+      window.clearTimeout(toastTimeoutRef.current);
+    }
+
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setToast("");
+      toastTimeoutRef.current = null;
+    }, duration);
+  }
   
   async function saveTeam() {
     if (!team.name.trim()) {
-      setToast("チーム名を入力してください");
+      showToast("チーム名を入力してください");
       return;
     }
     try {
@@ -170,13 +192,10 @@ export default function Home() {
 
       const data: TeamResponse = await response.json();
       setTeam(data.team);
-      setToast(`「${data.team.name}」を保存しました`);
-      window.setTimeout(() => {
-        setToast("");
-      }, 2500);
+      showToast(`「${data.team.name}」を保存しました`);
     } catch (err) {
       console.error(err);
-      setToast("保存に失敗しました");
+      showToast("保存に失敗しました");
     }
   }
   
@@ -186,10 +205,7 @@ export default function Home() {
       members: [],
     });
     setQuery("");
-    setToast("新しいチームを作成できます");
-    window.setTimeout(() => {
-      setToast("");
-    }, 2200);
+    showToast("新しいチームを作成できます", 2200);
   }
   
   return (
@@ -345,7 +361,7 @@ export default function Home() {
                           {member.avatarUrl ? (
                             <img
                               src={member.avatarUrl}
-                              alt={member.name}
+                              alt=""
                               className="avatar"
                               style={{
                                 objectFit: "cover",
@@ -396,7 +412,7 @@ export default function Home() {
                         {member.avatarUrl ? (
                           <img
                             src={member.avatarUrl}
-                            alt={member.name}
+                            alt=""
                             className="avatar"
                             style={{
                               objectFit: "cover",

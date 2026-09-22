@@ -20,6 +20,12 @@ type TeamPayload = {
   memberIds: string[];
 };
 
+type TeamRequestBody = {
+  name?: unknown;
+  description?: unknown;
+  memberIds?: unknown;
+};
+
 const members: Member[] = [
   {
     id: "member-1",
@@ -105,4 +111,22 @@ export function updateTeam(id: string, payload: TeamPayload) {
   };
 
   return currentTeam;
+}
+
+export function parseTeamRequestBody(body: TeamRequestBody) {
+  if (
+    typeof body.name !== "string" ||
+    !body.name.trim() ||
+    typeof body.description !== "string" ||
+    !Array.isArray(body.memberIds) ||
+    !body.memberIds.every((memberId) => typeof memberId === "string")
+  ) {
+    return null;
+  }
+
+  return {
+    name: body.name.trim(),
+    description: body.description.trim(),
+    memberIds: body.memberIds,
+  };
 }
