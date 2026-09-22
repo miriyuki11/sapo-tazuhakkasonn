@@ -16,18 +16,31 @@ type MembersResponse = {
 };
 
 type Team = {
-  id?: string;
+  id: string;
   name: string;
   description: string;
   members: Member[];
 };
 
+type TeamResponse = {
+  team: Team;
+};
+
+type TeamPayload = {
+  name: string;
+  description: string;
+  memberIds: string[];
+};
+
+const emptyTeam: Team = {
+  id: "",
+  name: "",
+  description: "",
+  members: [],
+};
+
 export default function Home() {
-  const [team, setTeam] = useState<Team>({
-    name: "開発チーム",
-    description: "新しいサービスの開発を行うチームです。",
-    members: [],
-  });
+  const [team, setTeam] = useState<Team>(emptyTeam);
 
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [query, setQuery] = useState("");
@@ -40,17 +53,24 @@ export default function Home() {
       try {
         setLoading(true);
         setError("");
-        const response = await fetch("/api/team/members");
-        if (!response.ok) {
-          throw new Error("メンバー情報の取得に失敗しました");
+        const [membersResponse, teamResponse] = await Promise.all([
+          fetch("/api/team/members", {
+            cache: "no-store",
+          }),
+          fetch("/api/team", {
+            cache: "no-store",
+          }),
+        ]);
+        if (!membersResponse.ok || !teamResponse.ok) {
+          throw new Error("データの取得に失敗しました");
         }
-        const data: MembersResponse = await response.json();
-        setAllMembers(data.members);
+        const membersData: MembersResponse = await membersResponse.json();
+        const teamData: TeamResponse = await teamResponse.json();
+        setAllMembers(membersData.members);
+        setTeam(teamData.team);
       } catch (err) {
         console.error(err);
-        setError(
-          "Slackユーザーの取得に失敗しました。APIがまだ実装されていない可能性があります。"
-        );
+        setError("Slackユーザーまたはチーム情報の取得に失敗しました。");
       } finally {
         setLoading(false);
       }
@@ -118,6 +138,14 @@ export default function Home() {
       ),
     }));
   }
+
+  function buildTeamPayload(currentTeam: Team): TeamPayload {
+    return {
+      name: currentTeam.name.trim(),
+      description: currentTeam.description,
+      memberIds: currentTeam.members.map((member) => member.id),
+    };
+  }
   
   async function saveTeam() {
     if (!team.name.trim()) {
@@ -125,21 +153,24 @@ export default function Home() {
       return;
     }
     try {
-      /* await fetch(`/api/teams/${team.id}`, {
-       *   method: "PATCH",
-       *   headers: {
-       *     "Content-Type": "application/json",
-       *   },
-       *   body: JSON.stringify({
-       *     name: team.name,
-       *     description: team.description,
-       *     memberIds: team.members.map(
-       *       (member) => member.id
-       *     ),
-       *   }),
-       * });
-       */
-      setToast(`「${team.name}」を保存しました`);
+      const response = await fetch(
+        team.id ? `/api/team/${team.id}` : "/api/team",
+        {
+          method: team.id ? "PATCH" : "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(buildTeamPayload(team)),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("保存に失敗しました");
+      }
+
+      const data: TeamResponse = await response.json();
+      setTeam(data.team);
+      setToast(`「${data.team.name}」を保存しました`);
       window.setTimeout(() => {
         setToast("");
       }, 2500);
@@ -151,8 +182,7 @@ export default function Home() {
   
   function createNewTeam() {
     setTeam({
-      name: "",
-      description: "",
+      ...emptyTeam,
       members: [],
     });
     setQuery("");
@@ -284,14 +314,18 @@ export default function Home() {
             )}
             {!loading && !error && (
               <>
-                <div className="form-label">
+                <label
+                  className="form-label"
+                  htmlFor="member-search"
+                >
                   メンバーを追加
-                </div>
+                </label>
                 <div className="search-wrap">
                   <span className="search-icon">
                     🔍
                   </span>
                   <input
+                    id="member-search"
                     className="search"
                     value={query}
                     onChange={(event) =>
