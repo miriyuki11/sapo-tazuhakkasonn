@@ -69,22 +69,35 @@ let currentTeam: TeamRecord = {
     })),
 };
 
+function cloneMember(member: Member) {
+  return {
+    ...member,
+  };
+}
+
+function cloneTeam(team: TeamRecord) {
+  return {
+    ...team,
+    members: team.members.map(cloneMember),
+  };
+}
+
 function resolveMembers(memberIds: string[]) {
   return memberIds
     .map((memberId) => members.find((member) => member.id === memberId))
     .filter((member): member is Member => Boolean(member))
     .map((member) => ({
-      ...member,
+      ...cloneMember(member),
       role: member.role ?? "メンバー",
     }));
 }
 
 export function getMembers() {
-  return members;
+  return members.map(cloneMember);
 }
 
 export function getTeam() {
-  return currentTeam;
+  return cloneTeam(currentTeam);
 }
 
 export function createTeam(payload: TeamPayload) {
@@ -95,7 +108,7 @@ export function createTeam(payload: TeamPayload) {
     members: resolveMembers(payload.memberIds),
   };
 
-  return currentTeam;
+  return cloneTeam(currentTeam);
 }
 
 export function updateTeam(id: string, payload: TeamPayload) {
@@ -110,7 +123,7 @@ export function updateTeam(id: string, payload: TeamPayload) {
     members: resolveMembers(payload.memberIds),
   };
 
-  return currentTeam;
+  return cloneTeam(currentTeam);
 }
 
 export function parseTeamRequestBody(body: unknown) {
