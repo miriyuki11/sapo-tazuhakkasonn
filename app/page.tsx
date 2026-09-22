@@ -46,9 +46,13 @@ export default function Home() {
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [reloading, setReloading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
   const toastTimeoutRef = useRef<number | null>(null);
+  const reloadingRef = useRef(false);
+  const savingRef = useRef(false);
 
   const fetchTeamData = useCallback(async () => {
     const [membersResponse, teamResponse] = await Promise.all([
@@ -80,6 +84,13 @@ export default function Home() {
   }
 
   const loadData = useCallback(async () => {
+    if (reloadingRef.current) {
+      return;
+    }
+
+    reloadingRef.current = true;
+    setReloading(true);
+
     try {
       setLoading(true);
       setError("");
@@ -89,6 +100,8 @@ export default function Home() {
       console.error(err);
       setError("Slackユーザーまたはチーム情報の取得に失敗しました。");
     } finally {
+      reloadingRef.current = false;
+      setReloading(false);
       setLoading(false);
     }
   }, [fetchTeamData]);
@@ -221,12 +234,18 @@ export default function Home() {
   }
   
   async function saveTeam() {
+    if (savingRef.current) {
+      return;
+    }
+
     if (!team.name.trim()) {
       showToast("チーム名を入力してください");
       return;
     }
 
     const teamName = team.name.trim();
+    savingRef.current = true;
+    setSaving(true);
 
     try {
       const response = await fetch(
@@ -254,6 +273,9 @@ export default function Home() {
     } catch (err) {
       console.error(err);
       showToast("保存に失敗しました");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   }
   
@@ -525,6 +547,7 @@ export default function Home() {
                 <div className="actions">
                   <button
                     className="btn"
+                    disabled={reloading || saving}
                     type="button"
                     onClick={() => void loadData()}
                   >
@@ -532,6 +555,7 @@ export default function Home() {
                   </button>
                   <button
                     className="btn btn-primary"
+                    disabled={saving}
                     type="button"
                     onClick={saveTeam}
                   >
