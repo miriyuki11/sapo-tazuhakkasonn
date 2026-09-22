@@ -1,7 +1,9 @@
+import type { NextRequest } from "next/server";
+
 import { parseTeamRequestBody, updateTeam } from "../data";
 
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const { id } = await context.params;
