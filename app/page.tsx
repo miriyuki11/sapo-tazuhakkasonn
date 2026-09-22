@@ -542,16 +542,14 @@ export default function Home() {
             )}
           </div>
         </section>
-        {toast && (
-          <div
-            className="toast"
-            aria-atomic="true"
-            aria-live="polite"
-            role="status"
-          >
-            {toast}
-          </div>
-        )}
+        <div
+          className="toast"
+          aria-atomic="true"
+          aria-live="polite"
+          role="status"
+        >
+          {toast}
+        </div>
       </main>
     </div>
   );

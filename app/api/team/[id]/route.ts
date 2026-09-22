@@ -2,23 +2,34 @@ import type { NextRequest } from "next/server";
 
 import { parseTeamRequestBody, updateTeam } from "../data";
 
+function invalidRequestResponse() {
+  return Response.json(
+    {
+      error: "入力内容が正しくありません。",
+    },
+    {
+      status: 400,
+    }
+  );
+}
+
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const { id } = await context.params;
-  const body = await request.json();
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    return invalidRequestResponse();
+  }
+
   const payload = parseTeamRequestBody(body);
 
   if (!payload) {
-    return Response.json(
-      {
-        error: "入力内容が正しくありません。",
-      },
-      {
-        status: 400,
-      }
-    );
+    return invalidRequestResponse();
   }
 
   const team = updateTeam(id, payload);

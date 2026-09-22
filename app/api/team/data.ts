@@ -113,14 +113,20 @@ export function updateTeam(id: string, payload: TeamPayload) {
   return currentTeam;
 }
 
-export function parseTeamRequestBody(body: TeamRequestBody) {
+export function parseTeamRequestBody(body: unknown) {
+  if (!body || typeof body !== "object") {
+    return null;
+  }
+
+  const payload = body as TeamRequestBody;
+
   if (
-    typeof body.name !== "string" ||
-    !body.name.trim() ||
-    typeof body.description !== "string" ||
-    !Array.isArray(body.memberIds) ||
-    new Set(body.memberIds).size !== body.memberIds.length ||
-    !body.memberIds.every(
+    typeof payload.name !== "string" ||
+    !payload.name.trim() ||
+    typeof payload.description !== "string" ||
+    !Array.isArray(payload.memberIds) ||
+    new Set(payload.memberIds).size !== payload.memberIds.length ||
+    !payload.memberIds.every(
       (memberId) =>
         typeof memberId === "string" &&
         members.some((member) => member.id === memberId)
@@ -130,8 +136,8 @@ export function parseTeamRequestBody(body: TeamRequestBody) {
   }
 
   return {
-    name: body.name.trim(),
-    description: body.description.trim(),
-    memberIds: body.memberIds,
+    name: payload.name.trim(),
+    description: payload.description.trim(),
+    memberIds: payload.memberIds,
   };
 }
