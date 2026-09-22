@@ -125,6 +125,20 @@ export default function Home() {
       return;
     }
     try {
+      /* await fetch(`/api/teams/${team.id}`, {
+       *   method: "PATCH",
+       *   headers: {
+       *     "Content-Type": "application/json",
+       *   },
+       *   body: JSON.stringify({
+       *     name: team.name,
+       *     description: team.description,
+       *     memberIds: team.members.map(
+       *       (member) => member.id
+       *     ),
+       *   }),
+       * });
+       */
       setToast(`「${team.name}」を保存しました`);
       window.setTimeout(() => {
         setToast("");
