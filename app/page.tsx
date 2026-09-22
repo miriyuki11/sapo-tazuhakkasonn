@@ -525,12 +525,14 @@ export default function Home() {
                 <div className="actions">
                   <button
                     className="btn"
+                    type="button"
                     onClick={() => void loadData()}
                   >
                     キャンセル
                   </button>
                   <button
                     className="btn btn-primary"
+                    type="button"
                     onClick={saveTeam}
                   >
                     変更を保存
@@ -541,7 +543,12 @@ export default function Home() {
           </div>
         </section>
         {toast && (
-          <div className="toast">
+          <div
+            className="toast"
+            aria-atomic="true"
+            aria-live="polite"
+            role="status"
+          >
             {toast}
           </div>
         )}
