@@ -119,6 +119,7 @@ export function parseTeamRequestBody(body: TeamRequestBody) {
     !body.name.trim() ||
     typeof body.description !== "string" ||
     !Array.isArray(body.memberIds) ||
+    new Set(body.memberIds).size !== body.memberIds.length ||
     !body.memberIds.every(
       (memberId) =>
         typeof memberId === "string" &&

@@ -225,6 +225,9 @@ export default function Home() {
       showToast("チーム名を入力してください");
       return;
     }
+
+    const teamName = team.name.trim();
+
     try {
       const response = await fetch(
         team.id ? `/api/team/${team.id}` : "/api/team",
@@ -241,8 +244,13 @@ export default function Home() {
         throw new Error("保存に失敗しました");
       }
 
-      const data = await refreshData();
-      showToast(`「${data.team.name}」を保存しました`);
+      try {
+        const data = await refreshData();
+        showToast(`「${data.team.name}」を保存しました`);
+      } catch (err) {
+        console.error(err);
+        showToast(`「${teamName}」を保存しました。最新状態の再読込に失敗しました。`);
+      }
     } catch (err) {
       console.error(err);
       showToast("保存に失敗しました");
@@ -402,7 +410,11 @@ export default function Home() {
                   />
                 </div>
                 {query && (
-                  <div className="search-results">
+                  <div
+                    className="search-results"
+                    aria-atomic="true"
+                    aria-live="polite"
+                  >
                     {searchResults.length > 0 ? (
                       searchResults.map((member) => (
                         <div
