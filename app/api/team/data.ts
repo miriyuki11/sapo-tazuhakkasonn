@@ -119,7 +119,11 @@ export function parseTeamRequestBody(body: TeamRequestBody) {
     !body.name.trim() ||
     typeof body.description !== "string" ||
     !Array.isArray(body.memberIds) ||
-    !body.memberIds.every((memberId) => typeof memberId === "string")
+    !body.memberIds.every(
+      (memberId) =>
+        typeof memberId === "string" &&
+        members.some((member) => member.id === memberId)
+    )
   ) {
     return null;
   }
