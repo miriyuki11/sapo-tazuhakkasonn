@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { useState } from "react"
 import { Button } from "@/src/components/ui/button"
@@ -12,6 +13,7 @@ import {
 import { Input } from "@/src/components/ui/input"
 
 export function AuthForm() {
+    const router = useRouter()
     // モード切り替え状態（true: ログイン / false: サインアップ）
     const [isLoginMode, setIsLoginMode] = useState(true)
 
@@ -54,6 +56,9 @@ export function AuthForm() {
             if (error) {
                 setErrorMessage(error.message)
                 return
+            }
+            if (isLoginMode){
+                router.push("/")
             }
             alert(isLoginMode ? "ログイン完了" : "確認メールを送信しました。")
         } catch  {
