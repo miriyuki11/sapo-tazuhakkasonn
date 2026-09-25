@@ -1,5 +1,6 @@
 "use client"
 
+import { supabase } from "@/lib/supabase"
 import { useState } from "react"
 import { Button } from "@/src/components/ui/button"
 import {
@@ -41,17 +42,22 @@ export function AuthForm() {
         setIsLoading(true)
 
         try {
-            // Promise と setTimeout を使って正確に1秒間待つ非同期処理を作成
-            await new Promise((resolve) => setTimeout(resolve, 1000))
-
-            console.log("送信成功", {
-                email,
-                password,
-                isLoginMode,
-            })
-            alert(isLoginMode ? "ログイン完了（仮）" : "新規登録完了（仮）")
+            const { error } = isLoginMode
+                ? await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                })
+                : await supabase.auth.signUp({
+                    email,
+                    password
+                })
+            if (error) {
+                setErrorMessage(error.message)
+                return
+            }
+            alert(isLoginMode ? "ログイン完了" : "確認メールを送信しました。")
         } catch (error) {
-            setErrorMessage("送信中にエラーが発生しました")
+            setErrorMessage("認証処理中にエラーが発生しました")
         } finally {
             setIsLoading(false)
         }
@@ -109,8 +115,8 @@ export function AuthForm() {
                         {isLoading
                             ? "処理中..."
                             : isLoginMode
-                            ? "ログイン"
-                            : "新規登録"}
+                                ? "ログイン"
+                                : "新規登録"}
                     </Button>
                 </Field>
             </form>
