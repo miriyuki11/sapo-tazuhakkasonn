@@ -56,7 +56,7 @@ export function AuthForm() {
                 return
             }
             alert(isLoginMode ? "ログイン完了" : "確認メールを送信しました。")
-        } catch (error) {
+        } catch  {
             setErrorMessage("認証処理中にエラーが発生しました")
         } finally {
             setIsLoading(false)
