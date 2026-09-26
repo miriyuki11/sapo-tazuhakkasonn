@@ -1,5 +1,6 @@
-import type { NextRequest } from "next/server";
+import type { User } from "@supabase/supabase-js";
 
+import { withAuth } from "@/lib/api";
 import { parseTeamRequestBody, updateTeam } from "../data";
 
 function invalidRequestResponse() {
@@ -13,10 +14,13 @@ function invalidRequestResponse() {
   );
 }
 
-export async function PATCH(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export const PATCH = withAuth(async (
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+  _user: User
+) => {
+  void _user;
+
   const { id } = await context.params;
   let body: unknown;
 
@@ -48,4 +52,4 @@ export async function PATCH(
   return Response.json({
     team,
   });
-}
+});

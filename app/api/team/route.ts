@@ -1,4 +1,6 @@
 import { createTeam, getTeam, parseTeamRequestBody } from "./data";
+import { withAuth } from "@/lib/api";
+import type { User } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
@@ -13,13 +15,18 @@ function invalidRequestResponse() {
   );
 }
 
-export function GET() {
+export const GET = withAuth(async (_request: Request, _user: User) => {
+  void _request;
+  void _user;
+
   return Response.json({
     team: getTeam(),
   });
-}
+});
 
-export async function POST(request: Request) {
+export const POST = withAuth(async (request: Request, _user: User) => {
+  void _user;
+
   let body: unknown;
 
   try {
@@ -42,4 +49,4 @@ export async function POST(request: Request) {
       status: 201,
     }
   );
-}
+});
