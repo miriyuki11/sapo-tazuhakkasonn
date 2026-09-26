@@ -12,7 +12,23 @@ import {
 } from "@/src/components/ui/field"
 import { Input } from "@/src/components/ui/input"
 
-export function AuthForm() {
+function getAuthErrorMessage(error: { code?: string; message: string }) {
+    const details = `${error.code ?? ""} ${error.message}`.toLowerCase()
+
+    if (details.includes("invalid_credentials") || details.includes("invalid login credentials")) {
+        return "メールアドレスまたはパスワードが正しくありません。"
+    }
+    if (details.includes("user_already_exists") || details.includes("user already registered")) {
+        return "このメールアドレスは既に登録されています。"
+    }
+    if (details.includes("email_not_confirmed")) {
+        return "メールアドレスの確認が完了していません。確認メールをご確認ください。"
+    }
+
+    return "認証に失敗しました。入力内容をご確認のうえ、再度お試しください。"
+}
+
+export function AuthForm({ callbackError = false }: { callbackError?: boolean }) {
     const router = useRouter()
     // モード切り替え状態（true: ログイン / false: サインアップ）
     const [isLoginMode, setIsLoginMode] = useState(true)
@@ -20,7 +36,11 @@ export function AuthForm() {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
 
-    const [errorMessage, setErrorMessage] = useState<string | null>(null)
+    const [errorMessage, setErrorMessage] = useState<string | null>(
+        callbackError
+            ? "メール認証を完了できませんでした。確認リンクを再度開いてください。"
+            : null
+    )
     const [isLoading, setIsLoading] = useState(false)
 
     const validateForm = (): boolean => {
@@ -51,10 +71,13 @@ export function AuthForm() {
                 })
                 : await supabase.auth.signUp({
                     email,
-                    password
+                    password,
+                    options: {
+                        emailRedirectTo: new URL("/auth/callback", window.location.origin).toString(),
+                    },
                 })
             if (error) {
-                setErrorMessage(error.message)
+                setErrorMessage(getAuthErrorMessage(error))
                 return
             }
             if (isLoginMode) {
@@ -62,7 +85,7 @@ export function AuthForm() {
             } else {
                 router.push("/auth/verify-email")
             }
-        } catch  {
+        } catch {
             setErrorMessage("認証処理中にエラーが発生しました")
         } finally {
             setIsLoading(false)
