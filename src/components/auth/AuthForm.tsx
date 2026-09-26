@@ -57,10 +57,11 @@ export function AuthForm() {
                 setErrorMessage(error.message)
                 return
             }
-            if (isLoginMode){
+            if (isLoginMode) {
                 router.push("/")
+            } else {
+                router.push("/auth/verify-email")
             }
-            alert(isLoginMode ? "ログイン完了" : "確認メールを送信しました。")
         } catch  {
             setErrorMessage("認証処理中にエラーが発生しました")
         } finally {
