@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AuthForm } from './AuthForm'
-import { vi } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
@@ -32,10 +32,7 @@ describe('AuthForm', () => {
       await userEvent.click(submitButton)
 
       await waitFor(() => {
-        const errorText = screen.queryByText((content, element) =>
-          content.includes('有効なメールアドレス') && element?.className.includes('text-red')
-        )
-        expect(errorText || screen.getByText(/有効なメールアドレス/i)).toBeTruthy()
+        expect(screen.getByText(/有効なメールアドレス/i)).toBeTruthy()
       })
     })
 
@@ -80,7 +77,7 @@ describe('AuthForm', () => {
     test('ログイン/サインアップ切り替えボタンが表示される', () => {
       render(<AuthForm />)
 
-      expect(screen.getByText(/アカウントをお持ちでない方はこちら/i)).toBeInTheDocument()
+      expect(screen.getByText(/アカウントをお持ちでない方はこちら/i)).toBeTruthy()
     })
 
     test('モード切り替え時にエラーメッセージをリセット', async () => {
@@ -90,13 +87,13 @@ describe('AuthForm', () => {
       await userEvent.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByText(/有効なメールアドレス/i)).toBeInTheDocument()
+        expect(screen.getByText(/有効なメールアドレス/i)).toBeTruthy()
       })
 
       const toggleButton = screen.getByText(/アカウントをお持ちでない方はこちら/i)
       await userEvent.click(toggleButton)
 
-      expect(screen.queryByText(/有効なメールアドレス/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/有効なメールアドレス/i)).toBeNull()
     })
   })
 })
