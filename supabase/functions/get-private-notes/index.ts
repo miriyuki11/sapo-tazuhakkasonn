@@ -60,7 +60,7 @@ Deno.serve(async (request) => {
     },
   )
 
-  const { data: userData, error: userError } = await supabase.auth.getUser(token)
+  const { data: userData, error: userError } = await supabase.auth.getUser()
   if (userError || !userData.user) {
     return jsonResponse({ error: 'Invalid authentication token' }, 401)
   }
@@ -68,6 +68,7 @@ Deno.serve(async (request) => {
   const { data: notes, error } = await supabase
     .from('user_private_notes')
     .select('id, author_user_id, target_user_id, note_content, created_at, updated_at')
+    .eq('author_user_id', userData.user.id)
     .eq('target_user_id', targetUserId)
     .order('created_at', { ascending: false })
 
