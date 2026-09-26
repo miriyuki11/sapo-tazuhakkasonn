@@ -34,22 +34,20 @@ app.post('*', async (c) => {
     return c.json({ error: 'Unauthorized' }, 401)
   }
 
-  let body: { note_id?: unknown }
-
-  try {
-    body = await c.req.json()
-  } catch {
+  const body = await c.req.json().catch(() => null)
+  if (!body || typeof body !== 'object') {
     return c.json({ error: 'Invalid JSON body' }, 400)
   }
 
-  if (typeof body.note_id !== 'string' || !body.note_id.trim()) {
+  const noteId = (body as { note_id?: unknown }).note_id
+  if (typeof noteId !== 'string' || !noteId.trim()) {
     return c.json({ error: 'note_id is required and must be a string.' }, 400)
   }
 
   const { data, error } = await supabaseClient
     .from('user_private_notes')
     .delete()
-    .eq('id', body.note_id)
+    .eq('id', noteId)
     .eq('author_user_id', authData.user.id)
     .select('id')
 

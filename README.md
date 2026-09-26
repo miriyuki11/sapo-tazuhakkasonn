@@ -205,7 +205,7 @@ supabase functions deploy delete_note --no-verify-jwt
 ローカル実行時は次のコマンドで関数を起動します。
 
 ```bash
-supabase functions serve --no-verify-jwt --workdir C:\Users\yukik\Desktop\hakkason\sapo-tazuhakkasonn
+supabase functions serve --no-verify-jwt --workdir .
 ```
 
 更新は `note_id` と `note_content` を POST し、削除は `note_id` を POST します。成功時は更新が 200、削除が 200 になります。別ユーザーの JWT で同じ `note_id` を操作すると、`Note not found or you do not have permission...` の 404 が返ります。
