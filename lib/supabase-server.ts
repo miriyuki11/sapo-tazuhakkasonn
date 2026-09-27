@@ -22,7 +22,7 @@ export async function createServerSupabaseClient() {
                             cookiesStore.set(name, value, options);
                         });
                     } catch {
-
+                        // Server Components can't write cookies; the proxy middleware refreshes the session instead.
                     }
                 }
             }
