@@ -101,7 +101,11 @@ export function AuthForm({ callbackError = false }: { callbackError?: boolean })
 
             {/* エラーメッセージ */}
             {errorMessage && (
-                <FieldDescription className="text-red-500 font-medium">
+                <FieldDescription
+                    role="alert"
+                    aria-live="assertive"
+                    className="text-red-500 font-medium"
+                >
                     {errorMessage}
                 </FieldDescription>
             )}
