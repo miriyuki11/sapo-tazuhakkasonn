@@ -16,12 +16,12 @@ function invalidRequestResponse() {
 
 export const PATCH = withAuth(async (
   request: Request,
-  context: { params: Promise<{ id: string }> },
+  context,
   _user: User
 ) => {
   void _user;
 
-  const { id } = await context.params;
+  const { id } = await (context.params as Promise<{ id: string }>);
   let body: unknown;
 
   try {

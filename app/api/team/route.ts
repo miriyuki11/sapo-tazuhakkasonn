@@ -15,8 +15,9 @@ function invalidRequestResponse() {
   );
 }
 
-export const GET = withAuth(async (_request: Request, _user: User) => {
+export const GET = withAuth(async (_request: Request, _context, _user: User) => {
   void _request;
+  void _context;
   void _user;
 
   return Response.json({
@@ -24,7 +25,8 @@ export const GET = withAuth(async (_request: Request, _user: User) => {
   });
 });
 
-export const POST = withAuth(async (request: Request, _user: User) => {
+export const POST = withAuth(async (request: Request, _context, _user: User) => {
+  void _context;
   void _user;
 
   let body: unknown;

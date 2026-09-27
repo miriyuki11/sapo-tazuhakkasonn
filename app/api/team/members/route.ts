@@ -4,8 +4,9 @@ import type { User } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
-export const GET = withAuth(async (_request: Request, _user: User) => {
+export const GET = withAuth(async (_request: Request, _context, _user: User) => {
   void _request;
+  void _context;
   void _user;
 
   return Response.json({
