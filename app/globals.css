@@ -234,6 +234,7 @@ button {
 .search-wrap {
   position: relative;
   margin-bottom: 18px;
+}
 
   @theme inline {
     --color-background: var(--background);
