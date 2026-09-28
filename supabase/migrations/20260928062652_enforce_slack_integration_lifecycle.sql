@@ -41,7 +41,10 @@ begin
         from public.slack_integrations
         where team_id = old.team_id
     ) then
-        delete from public.slack_workspaces
+        delete from public.user_slack_connections
+        where slack_team_id = old.team_id;
+
+        delete from public.slack_workspace_settings
         where team_id = old.team_id;
     end if;
 
