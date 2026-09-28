@@ -23,13 +23,78 @@ CREATE TABLE public.team_members (
 ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
 
+-- Helper functions evaluated with definer privileges avoid recursive RLS evaluation.
+CREATE OR REPLACE FUNCTION public.is_team_member(team_uuid uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+	SELECT EXISTS (
+		SELECT 1
+		FROM public.team_members tm
+		WHERE tm.team_id = team_uuid
+			AND tm.user_id = auth.uid()
+	);
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_team_admin_or_owner(team_uuid uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+	SELECT EXISTS (
+		SELECT 1
+		FROM public.team_members tm
+		WHERE tm.team_id = team_uuid
+			AND tm.user_id = auth.uid()
+			AND tm.role IN ('owner', 'admin')
+	);
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_team_creator(team_uuid uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+	SELECT EXISTS (
+		SELECT 1
+		FROM public.teams t
+		WHERE t.id = team_uuid
+			AND t.created_by = auth.uid()
+	);
+$$;
+
+CREATE OR REPLACE FUNCTION public.can_manage_team_members(team_uuid uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+	SELECT public.is_team_creator(team_uuid)
+			OR public.is_team_admin_or_owner(team_uuid);
+$$;
+
+REVOKE ALL ON FUNCTION public.is_team_member(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.is_team_admin_or_owner(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.is_team_creator(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.can_manage_team_members(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_team_member(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_team_admin_or_owner(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_team_creator(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.can_manage_team_members(uuid) TO authenticated;
+
 -- teams policies
 CREATE POLICY "Users can view their teams" ON public.teams
 FOR SELECT USING (
-	auth.uid() = created_by OR EXISTS (
-		SELECT 1 FROM public.team_members
-		WHERE team_id = public.teams.id AND user_id = auth.uid()
-	)
+	auth.uid() = created_by
+	OR public.is_team_member(id)
 );
 
 CREATE POLICY "Users can create teams" ON public.teams
@@ -37,73 +102,32 @@ FOR INSERT WITH CHECK (auth.uid() = created_by);
 
 CREATE POLICY "Users can update their teams" ON public.teams
 FOR UPDATE USING (
-	auth.uid() = created_by OR EXISTS (
-		SELECT 1 FROM public.team_members
-		WHERE team_id = public.teams.id AND user_id = auth.uid() AND role = 'owner'
-	)
+	auth.uid() = created_by
+	OR public.is_team_admin_or_owner(id)
 ) WITH CHECK (
-	auth.uid() = created_by OR EXISTS (
-		SELECT 1 FROM public.team_members
-		WHERE team_id = public.teams.id AND user_id = auth.uid() AND role = 'owner'
-	)
+	auth.uid() = created_by
+	OR public.is_team_admin_or_owner(id)
 );
 
 CREATE POLICY "Users can delete their teams" ON public.teams
-FOR DELETE USING (auth.uid() = created_by);
+FOR DELETE USING (
+	auth.uid() = created_by
+	OR public.is_team_admin_or_owner(id)
+);
 
 -- team_members policies
 CREATE POLICY "Users can view team members of their teams" ON public.team_members
-FOR SELECT USING (
-	EXISTS (
-		SELECT 1 FROM public.team_members tm_self
-		WHERE tm_self.team_id = public.team_members.team_id AND tm_self.user_id = auth.uid()
-	)
-);
+FOR SELECT USING (public.is_team_member(team_id));
 
-CREATE POLICY "Team creators or owners can add members" ON public.team_members
-FOR INSERT WITH CHECK (
-	EXISTS (
-		SELECT 1 FROM public.teams
-		WHERE id = public.team_members.team_id AND created_by = auth.uid()
-	) OR
-	EXISTS (
-		SELECT 1 FROM public.team_members tm
-		WHERE tm.team_id = public.team_members.team_id AND tm.user_id = auth.uid() AND tm.role = 'owner'
-	)
-);
+CREATE POLICY "Team managers can add members" ON public.team_members
+FOR INSERT WITH CHECK (public.can_manage_team_members(team_id));
 
-CREATE POLICY "Team creators or owners can update member roles" ON public.team_members
-FOR UPDATE USING (
-	EXISTS (
-		SELECT 1 FROM public.teams
-		WHERE id = public.team_members.team_id AND created_by = auth.uid()
-	) OR
-	EXISTS (
-		SELECT 1 FROM public.team_members tm
-		WHERE tm.team_id = public.team_members.team_id AND tm.user_id = auth.uid() AND tm.role = 'owner'
-	)
-) WITH CHECK (
-	EXISTS (
-		SELECT 1 FROM public.teams
-		WHERE id = public.team_members.team_id AND created_by = auth.uid()
-	) OR
-	EXISTS (
-		SELECT 1 FROM public.team_members tm
-		WHERE tm.team_id = public.team_members.team_id AND tm.user_id = auth.uid() AND tm.role = 'owner'
-	)
-);
+CREATE POLICY "Team managers can update member roles" ON public.team_members
+FOR UPDATE USING (public.can_manage_team_members(team_id))
+WITH CHECK (public.can_manage_team_members(team_id));
 
-CREATE POLICY "Team creators or owners can remove members" ON public.team_members
-FOR DELETE USING (
-	EXISTS (
-		SELECT 1 FROM public.teams
-		WHERE id = public.team_members.team_id AND created_by = auth.uid()
-	) OR
-	EXISTS (
-		SELECT 1 FROM public.team_members tm
-		WHERE tm.team_id = public.team_members.team_id AND tm.user_id = auth.uid() AND tm.role = 'owner'
-	)
-);
+CREATE POLICY "Team managers can remove members" ON public.team_members
+FOR DELETE USING (public.can_manage_team_members(team_id));
 
 -- Enable automatic updated_at column update for teams table
 CREATE OR REPLACE FUNCTION public.set_updated_at()
@@ -113,6 +137,22 @@ BEGIN
 		RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION public.prevent_team_created_by_change()
+RETURNS TRIGGER AS $$
+BEGIN
+		IF NEW.created_by <> OLD.created_by THEN
+			RAISE EXCEPTION 'teams.created_by is immutable';
+		END IF;
+
+		RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER prevent_teams_created_by_change
+BEFORE UPDATE ON public.teams
+FOR EACH ROW
+EXECUTE FUNCTION public.prevent_team_created_by_change();
 
 CREATE TRIGGER set_teams_updated_at
 BEFORE UPDATE ON public.teams
