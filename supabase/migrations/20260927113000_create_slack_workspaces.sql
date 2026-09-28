@@ -4,11 +4,11 @@ create table public.slack_workspaces (
     created_at timestamptz not null default now()
 );
 
-alter table public.slack_workspaces enable row level security;
-
 insert into public.slack_workspaces (team_id)
 select distinct team_id from public.slack_integrations
 on conflict (team_id) do nothing;
+
+alter table public.slack_workspaces enable row level security;
 
 create or replace function public.ensure_slack_workspace_anchor()
 returns trigger

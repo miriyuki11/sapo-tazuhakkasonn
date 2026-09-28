@@ -144,8 +144,8 @@ update
         auth.uid() = installer_user_id
         or auth.role() = 'service_role'
     ) with check (
-        auth.uid() = installer_user_id
-        or auth.role() = 'service_role'
+        auth.role() = 'service_role'
+        or public.is_slack_workspace_installer(team_id)
     );
 
 create policy "Installer or service role can delete slack integration" on public.slack_integrations for delete using (
