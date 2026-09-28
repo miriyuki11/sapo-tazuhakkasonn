@@ -102,6 +102,28 @@ drop index if exists public.slack_integrations_team_id_idx;
 
 create index slack_integrations_installer_user_id_idx on public.slack_integrations (installer_user_id);
 
+create or replace function public.is_slack_workspace_installer(workspace_team_id text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+    select auth.uid() is not null
+        and exists (
+            select
+                1
+            from
+                public.slack_integrations si
+            where
+                si.team_id = workspace_team_id
+                and si.installer_user_id = auth.uid()
+        );
+$$;
+
+revoke all on function public.is_slack_workspace_installer(text) from public;
+grant execute on function public.is_slack_workspace_installer(text) to authenticated;
+
 create policy "Installer or service role can view slack integration" on public.slack_integrations for
 select
     using (
@@ -135,67 +157,27 @@ create policy "Installer or service role can view workspace settings" on public.
 select
     using (
         auth.role() = 'service_role'
-        or exists (
-            select
-                1
-            from
-                public.slack_integrations si
-            where
-                si.team_id = slack_workspace_settings.team_id
-                and si.installer_user_id = auth.uid()
-        )
+        or public.is_slack_workspace_installer(slack_workspace_settings.team_id)
     );
 
 create policy "Installer or service role can insert workspace settings" on public.slack_workspace_settings for
 insert
     with check (
         auth.role() = 'service_role'
-        or exists (
-            select
-                1
-            from
-                public.slack_integrations si
-            where
-                si.team_id = slack_workspace_settings.team_id
-                and si.installer_user_id = auth.uid()
-        )
+        or public.is_slack_workspace_installer(slack_workspace_settings.team_id)
     );
 
 create policy "Installer or service role can update workspace settings" on public.slack_workspace_settings for
 update
     using (
         auth.role() = 'service_role'
-        or exists (
-            select
-                1
-            from
-                public.slack_integrations si
-            where
-                si.team_id = slack_workspace_settings.team_id
-                and si.installer_user_id = auth.uid()
-        )
+        or public.is_slack_workspace_installer(slack_workspace_settings.team_id)
     ) with check (
         auth.role() = 'service_role'
-        or exists (
-            select
-                1
-            from
-                public.slack_integrations si
-            where
-                si.team_id = slack_workspace_settings.team_id
-                and si.installer_user_id = auth.uid()
-        )
+        or public.is_slack_workspace_installer(slack_workspace_settings.team_id)
     );
 
 create policy "Installer or service role can delete workspace settings" on public.slack_workspace_settings for delete using (
     auth.role() = 'service_role'
-    or exists (
-        select
-            1
-        from
-            public.slack_integrations si
-        where
-            si.team_id = slack_workspace_settings.team_id
-            and si.installer_user_id = auth.uid()
-    )
+    or public.is_slack_workspace_installer(slack_workspace_settings.team_id)
 );
