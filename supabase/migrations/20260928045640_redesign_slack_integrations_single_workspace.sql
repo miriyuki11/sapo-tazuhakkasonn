@@ -42,6 +42,8 @@ create table if not exists public.user_slack_connections (
 create or replace function public.prevent_slack_workspace_settings_team_id_update()
 returns trigger
 language plpgsql
+security definer
+set search_path = public, pg_temp
 as $$
 begin
     if new.team_id is distinct from old.team_id then
@@ -55,6 +57,8 @@ $$;
 create or replace function public.delete_slack_workspace_settings_for_integration()
 returns trigger
 language plpgsql
+security definer
+set search_path = public, pg_temp
 as $$
 begin
     if not exists (
@@ -82,15 +86,18 @@ select
 from
     public.slack_integrations on conflict (user_id, slack_team_id) do nothing;
 
+drop trigger if exists slack_workspace_settings_prevent_team_id_update on public.slack_workspace_settings;
 create trigger slack_workspace_settings_prevent_team_id_update before
 update
     on public.slack_workspace_settings for each row execute function
 public.prevent_slack_workspace_settings_team_id_update();
 
+drop trigger if exists slack_integrations_delete_workspace_settings on public.slack_integrations;
 create trigger slack_integrations_delete_workspace_settings after delete on
 public.slack_integrations for each row execute function
 public.delete_slack_workspace_settings_for_integration();
 
+drop trigger if exists user_slack_connections_set_updated_at on public.user_slack_connections;
 create trigger user_slack_connections_set_updated_at before
 update
     on public.user_slack_connections for each row execute function public.set_updated_at();
@@ -101,11 +108,13 @@ alter table
 alter table
     public.slack_workspaces enable row level security;
 
+drop policy if exists "Service role can manage slack workspaces" on public.slack_workspaces;
 create policy "Service role can manage slack workspaces" on public.slack_workspaces for all
     using (auth.role() = 'service_role') with check (
         auth.role() = 'service_role'
     );
 
+drop policy if exists "Users can view own slack connections" on public.user_slack_connections;
 create policy "Users can view own slack connections" on public.user_slack_connections for
 select
     using (
@@ -113,6 +122,7 @@ select
         or auth.role() = 'service_role'
     );
 
+drop policy if exists "Users can insert own slack connections" on public.user_slack_connections;
 create policy "Users can insert own slack connections" on public.user_slack_connections for
 insert
     with check (
@@ -120,6 +130,7 @@ insert
         or auth.role() = 'service_role'
     );
 
+drop policy if exists "Users can update own slack connections" on public.user_slack_connections;
 create policy "Users can update own slack connections" on public.user_slack_connections for
 update
     using (
@@ -130,6 +141,7 @@ update
         or auth.role() = 'service_role'
     );
 
+drop policy if exists "Users can delete own slack connections" on public.user_slack_connections;
 create policy "Users can delete own slack connections" on public.user_slack_connections for delete using (
     auth.uid() = user_id
     or auth.role() = 'service_role'
@@ -175,6 +187,7 @@ $$;
 revoke all on function public.is_slack_workspace_installer(text) from public;
 grant execute on function public.is_slack_workspace_installer(text) to authenticated;
 
+drop policy if exists "Installer or service role can view slack integration" on public.slack_integrations;
 create policy "Installer or service role can view slack integration" on public.slack_integrations for
 select
     using (
@@ -182,6 +195,7 @@ select
         or auth.role() = 'service_role'
     );
 
+drop policy if exists "Installer or service role can insert slack integration" on public.slack_integrations;
 create policy "Installer or service role can insert slack integration" on public.slack_integrations for
 insert
     with check (
@@ -189,6 +203,7 @@ insert
         or auth.role() = 'service_role'
     );
 
+drop policy if exists "Installer or service role can update slack integration" on public.slack_integrations;
 create policy "Installer or service role can update slack integration" on public.slack_integrations for
 update
     using (
@@ -199,11 +214,13 @@ update
         or auth.role() = 'service_role'
     );
 
+drop policy if exists "Installer or service role can delete slack integration" on public.slack_integrations;
 create policy "Installer or service role can delete slack integration" on public.slack_integrations for delete using (
     auth.uid() = installer_user_id
     or auth.role() = 'service_role'
 );
 
+drop policy if exists "Installer or service role can view workspace settings" on public.slack_workspace_settings;
 create policy "Installer or service role can view workspace settings" on public.slack_workspace_settings for
 select
     using (
@@ -211,6 +228,7 @@ select
         or public.is_slack_workspace_installer(slack_workspace_settings.team_id)
     );
 
+drop policy if exists "Installer or service role can insert workspace settings" on public.slack_workspace_settings;
 create policy "Installer or service role can insert workspace settings" on public.slack_workspace_settings for
 insert
     with check (
@@ -218,6 +236,7 @@ insert
         or public.is_slack_workspace_installer(slack_workspace_settings.team_id)
     );
 
+drop policy if exists "Installer or service role can update workspace settings" on public.slack_workspace_settings;
 create policy "Installer or service role can update workspace settings" on public.slack_workspace_settings for
 update
     using (
@@ -228,6 +247,7 @@ update
         or public.is_slack_workspace_installer(slack_workspace_settings.team_id)
     );
 
+drop policy if exists "Installer or service role can delete workspace settings" on public.slack_workspace_settings;
 create policy "Installer or service role can delete workspace settings" on public.slack_workspace_settings for delete using (
     auth.role() = 'service_role'
     or public.is_slack_workspace_installer(slack_workspace_settings.team_id)
