@@ -145,4 +145,21 @@ CREATE POLICY "Team managers can remove members"
 ON public.team_members FOR DELETE
 USING (public.can_manage_team_members(team_id));
 
+CREATE OR REPLACE FUNCTION public.prevent_team_created_by_change()
+RETURNS TRIGGER AS $$
+BEGIN
+	IF NEW.created_by <> OLD.created_by THEN
+		RAISE EXCEPTION 'teams.created_by is immutable';
+	END IF;
+
+	RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS prevent_teams_created_by_change ON public.teams;
+CREATE TRIGGER prevent_teams_created_by_change
+BEFORE UPDATE ON public.teams
+FOR EACH ROW
+EXECUTE FUNCTION public.prevent_team_created_by_change();
+
 COMMIT;

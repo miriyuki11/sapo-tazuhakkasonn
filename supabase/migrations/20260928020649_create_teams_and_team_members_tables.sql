@@ -2,21 +2,21 @@ BEGIN;
 
 -- teams table
 CREATE TABLE public.teams (
-		id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-		name text NOT NULL UNIQUE CHECK (char_length(name) <= 255),
-		description text CHECK (char_length(description) <= 1000),
-		created_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-		created_at timestamp with time zone DEFAULT now() NOT NULL,
-		updated_at timestamp with time zone DEFAULT now() NOT NULL
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        name text NOT NULL UNIQUE CHECK (char_length(name) <= 255),
+        description text CHECK (char_length(description) <= 1000),
+        created_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+        created_at timestamp with time zone DEFAULT now() NOT NULL,
+        updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 -- team_members table
 CREATE TABLE public.team_members (
-		team_id uuid NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
-		user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-		role text NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
-		joined_at timestamp with time zone DEFAULT now() NOT NULL,
-		PRIMARY KEY (team_id, user_id)
+        team_id uuid NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
+        user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+        role text NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
+        joined_at timestamp with time zone DEFAULT now() NOT NULL,
+        PRIMARY KEY (team_id, user_id)
 );
 
 -- Set up Row Level Security (RLS)
@@ -31,13 +31,13 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-	SELECT auth.uid() IS NOT NULL
-		AND EXISTS (
-			SELECT 1
-			FROM public.team_members tm
-			WHERE tm.team_id = team_uuid
-				AND tm.user_id = auth.uid()
-		);
+    SELECT auth.uid() IS NOT NULL
+        AND EXISTS (
+            SELECT 1
+            FROM public.team_members tm
+            WHERE tm.team_id = team_uuid
+                AND tm.user_id = auth.uid()
+        );
 $$;
 
 CREATE OR REPLACE FUNCTION public.is_team_admin_or_owner(team_uuid uuid)
@@ -47,14 +47,14 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-	SELECT auth.uid() IS NOT NULL
-		AND EXISTS (
-			SELECT 1
-			FROM public.team_members tm
-			WHERE tm.team_id = team_uuid
-				AND tm.user_id = auth.uid()
-				AND tm.role IN ('owner', 'admin')
-		);
+    SELECT auth.uid() IS NOT NULL
+        AND EXISTS (
+            SELECT 1
+            FROM public.team_members tm
+            WHERE tm.team_id = team_uuid
+                AND tm.user_id = auth.uid()
+                AND tm.role IN ('owner', 'admin')
+        );
 $$;
 
 CREATE OR REPLACE FUNCTION public.is_team_creator(team_uuid uuid)
@@ -64,13 +64,13 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-	SELECT auth.uid() IS NOT NULL
-		AND EXISTS (
-			SELECT 1
-			FROM public.teams t
-			WHERE t.id = team_uuid
-				AND t.created_by = auth.uid()
-		);
+    SELECT auth.uid() IS NOT NULL
+        AND EXISTS (
+            SELECT 1
+            FROM public.teams t
+            WHERE t.id = team_uuid
+                AND t.created_by = auth.uid()
+        );
 $$;
 
 CREATE OR REPLACE FUNCTION public.can_manage_team_members(team_uuid uuid)
@@ -80,8 +80,8 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-	SELECT public.is_team_creator(team_uuid)
-		OR public.is_team_admin_or_owner(team_uuid);
+    SELECT public.is_team_creator(team_uuid)
+        OR public.is_team_admin_or_owner(team_uuid);
 $$;
 
 REVOKE ALL ON FUNCTION public.is_team_member(uuid) FROM PUBLIC;
@@ -99,23 +99,23 @@ FOR INSERT WITH CHECK (auth.uid() = created_by);
 
 CREATE POLICY "Users can view their teams" ON public.teams
 FOR SELECT USING (
-	auth.uid() = created_by
-	OR public.is_team_member(id)
+    auth.uid() = created_by
+    OR public.is_team_member(id)
 );
 
 CREATE POLICY "Users can update their teams" ON public.teams
 FOR UPDATE USING (
-	auth.uid() = created_by
-	OR public.is_team_admin_or_owner(id)
+    auth.uid() = created_by
+    OR public.is_team_admin_or_owner(id)
 ) WITH CHECK (
-	auth.uid() = created_by
-	OR public.is_team_admin_or_owner(id)
+    auth.uid() = created_by
+    OR public.is_team_admin_or_owner(id)
 );
 
 CREATE POLICY "Users can delete their teams" ON public.teams
 FOR DELETE USING (
-	auth.uid() = created_by
-	OR public.is_team_admin_or_owner(id)
+    auth.uid() = created_by
+    OR public.is_team_admin_or_owner(id)
 );
 
 -- team_members policies
@@ -136,10 +136,26 @@ FOR DELETE USING (public.can_manage_team_members(team_id));
 CREATE OR REPLACE FUNCTION public.set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
-		NEW.updated_at = NOW();
-		RETURN NEW;
+        NEW.updated_at = NOW();
+        RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION public.prevent_team_created_by_change()
+RETURNS TRIGGER AS $$
+BEGIN
+        IF NEW.created_by <> OLD.created_by THEN
+            RAISE EXCEPTION 'teams.created_by is immutable';
+        END IF;
+
+        RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER prevent_teams_created_by_change
+BEFORE UPDATE ON public.teams
+FOR EACH ROW
+EXECUTE FUNCTION public.prevent_team_created_by_change();
 
 CREATE TRIGGER set_teams_updated_at
 BEFORE UPDATE ON public.teams
