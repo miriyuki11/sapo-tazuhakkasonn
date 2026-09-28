@@ -55,6 +55,14 @@ update
 alter table
     public.user_slack_connections enable row level security;
 
+alter table
+    public.slack_workspaces enable row level security;
+
+create policy "Service role can manage slack workspaces" on public.slack_workspaces for all
+    using (auth.role() = 'service_role') with check (
+        auth.role() = 'service_role'
+    );
+
 create policy "Users can view own slack connections" on public.user_slack_connections for
 select
     using (
