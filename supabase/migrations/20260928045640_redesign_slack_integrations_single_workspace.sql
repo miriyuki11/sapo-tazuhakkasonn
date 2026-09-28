@@ -29,7 +29,7 @@ alter table
 alter column
     installer_user_id set not null;
 
-create table public.user_slack_connections (
+create table if not exists public.user_slack_connections (
     id uuid primary key default gen_random_uuid(),
     user_id uuid not null references auth.users (id) on delete cascade,
     slack_team_id text not null references public.slack_workspaces (team_id) on delete cascade,
@@ -57,8 +57,17 @@ returns trigger
 language plpgsql
 as $$
 begin
-    delete from public.slack_workspace_settings
-    where team_id = old.team_id;
+    if not exists (
+        select
+            1
+        from
+            public.slack_integrations
+        where
+            team_id = old.team_id
+    ) then
+        delete from public.slack_workspace_settings
+        where team_id = old.team_id;
+    end if;
 
     return old;
 end;
@@ -149,7 +158,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
     select auth.uid() is not null
         and exists (
