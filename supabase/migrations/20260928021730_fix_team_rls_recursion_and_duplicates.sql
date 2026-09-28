@@ -14,6 +14,9 @@ DROP POLICY IF EXISTS "Allow team owners/admins to update their teams." ON publi
 DROP POLICY IF EXISTS "Allow team owners to delete their teams." ON public.teams;
 
 DROP POLICY IF EXISTS "Users can view team members of their teams" ON public.team_members;
+DROP POLICY IF EXISTS "Team managers can add members" ON public.team_members;
+DROP POLICY IF EXISTS "Team managers can update member roles" ON public.team_members;
+DROP POLICY IF EXISTS "Team managers can remove members" ON public.team_members;
 DROP POLICY IF EXISTS "Team creators or owners can add members" ON public.team_members;
 DROP POLICY IF EXISTS "Team creators or owners can update member roles" ON public.team_members;
 DROP POLICY IF EXISTS "Team creators or owners can remove members" ON public.team_members;
