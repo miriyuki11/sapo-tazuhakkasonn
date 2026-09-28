@@ -22,10 +22,10 @@ DROP POLICY IF EXISTS "Allow team owners/admins to add members." ON public.team_
 DROP POLICY IF EXISTS "Allow team owners/admins to update member roles." ON public.team_members;
 DROP POLICY IF EXISTS "Allow team owners/admins to remove members." ON public.team_members;
 
-DROP FUNCTION IF EXISTS public.can_manage_team_members(uuid, uuid);
-DROP FUNCTION IF EXISTS public.is_team_creator(uuid, uuid);
-DROP FUNCTION IF EXISTS public.is_team_admin_or_owner(uuid, uuid);
 DROP FUNCTION IF EXISTS public.is_team_member(uuid, uuid);
+DROP FUNCTION IF EXISTS public.is_team_admin_or_owner(uuid, uuid);
+DROP FUNCTION IF EXISTS public.is_team_creator(uuid, uuid);
+DROP FUNCTION IF EXISTS public.can_manage_team_members(uuid, uuid);
 
 -- Helper functions evaluated with definer privileges avoid recursive RLS evaluation.
 CREATE OR REPLACE FUNCTION public.is_team_member(team_uuid uuid)
@@ -35,12 +35,13 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-	SELECT EXISTS (
-		SELECT 1
-		FROM public.team_members tm
-		WHERE tm.team_id = team_uuid
-			AND tm.user_id = auth.uid()
-	);
+	SELECT auth.uid() IS NOT NULL
+		AND EXISTS (
+			SELECT 1
+			FROM public.team_members tm
+			WHERE tm.team_id = team_uuid
+				AND tm.user_id = auth.uid()
+		);
 $$;
 
 CREATE OR REPLACE FUNCTION public.is_team_admin_or_owner(team_uuid uuid)
@@ -50,13 +51,14 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-	SELECT EXISTS (
-		SELECT 1
-		FROM public.team_members tm
-		WHERE tm.team_id = team_uuid
-			AND tm.user_id = auth.uid()
-			AND tm.role IN ('owner', 'admin')
-	);
+	SELECT auth.uid() IS NOT NULL
+		AND EXISTS (
+			SELECT 1
+			FROM public.team_members tm
+			WHERE tm.team_id = team_uuid
+				AND tm.user_id = auth.uid()
+				AND tm.role IN ('owner', 'admin')
+		);
 $$;
 
 CREATE OR REPLACE FUNCTION public.is_team_creator(team_uuid uuid)
@@ -66,12 +68,13 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-	SELECT EXISTS (
-		SELECT 1
-		FROM public.teams t
-		WHERE t.id = team_uuid
-			AND t.created_by = auth.uid()
-	);
+	SELECT auth.uid() IS NOT NULL
+		AND EXISTS (
+			SELECT 1
+			FROM public.teams t
+			WHERE t.id = team_uuid
+				AND t.created_by = auth.uid()
+		);
 $$;
 
 CREATE OR REPLACE FUNCTION public.can_manage_team_members(team_uuid uuid)
@@ -82,7 +85,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 	SELECT public.is_team_creator(team_uuid)
-			OR public.is_team_admin_or_owner(team_uuid);
+		OR public.is_team_admin_or_owner(team_uuid);
 $$;
 
 REVOKE ALL ON FUNCTION public.is_team_member(uuid) FROM PUBLIC;

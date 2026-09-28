@@ -1,5 +1,5 @@
 BEGIN;
 
--- ここにチーム管理ドメインのテーブル作成、変更、削除などのSQLを記述します。
+-- No-op: team management tables are created by later migrations in this series.
 
 COMMIT;
