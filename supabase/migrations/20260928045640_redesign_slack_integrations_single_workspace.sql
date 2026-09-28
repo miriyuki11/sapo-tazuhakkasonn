@@ -46,7 +46,7 @@ select
     team_id,
     slack_user_id
 from
-    public.slack_integrations;
+    public.slack_integrations on conflict (user_id, slack_team_id) do nothing;
 
 create trigger user_slack_connections_set_updated_at before
 update
@@ -144,8 +144,8 @@ update
         auth.uid() = installer_user_id
         or auth.role() = 'service_role'
     ) with check (
-        auth.role() = 'service_role'
-        or public.is_slack_workspace_installer(team_id)
+        auth.uid() = installer_user_id
+        or auth.role() = 'service_role'
     );
 
 create policy "Installer or service role can delete slack integration" on public.slack_integrations for delete using (
