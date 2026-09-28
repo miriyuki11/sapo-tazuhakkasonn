@@ -151,13 +151,38 @@ alter table
     public.slack_integrations drop constraint if exists slack_integrations_user_id_team_id_key;
 
 alter table
-    public.slack_integrations drop column user_id;
+    public.slack_integrations drop column if exists user_id;
 
-alter table
-    public.slack_integrations rename column slack_user_id to slack_installer_user_id;
+do $$
+begin
+    if exists (
+        select
+            1
+        from
+            information_schema.columns
+        where
+            table_schema = 'public'
+            and table_name = 'slack_integrations'
+            and column_name = 'slack_user_id'
+    ) and not exists (
+        select
+            1
+        from
+            information_schema.columns
+        where
+            table_schema = 'public'
+            and table_name = 'slack_integrations'
+            and column_name = 'slack_installer_user_id'
+    ) then
+        alter table public.slack_integrations rename column slack_user_id to slack_installer_user_id;
+    end if;
+end;
+$$;
 
 alter table
     public.slack_integrations
+drop
+    constraint if exists slack_integrations_team_id_key,
 add
     constraint slack_integrations_team_id_key unique (team_id);
 
