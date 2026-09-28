@@ -52,6 +52,18 @@ begin
 end;
 $$;
 
+create or replace function public.delete_slack_workspace_settings_for_integration()
+returns trigger
+language plpgsql
+as $$
+begin
+    delete from public.slack_workspace_settings
+    where team_id = old.team_id;
+
+    return old;
+end;
+$$;
+
 insert into
     public.user_slack_connections (user_id, slack_team_id, slack_user_id)
 select
@@ -65,6 +77,10 @@ create trigger slack_workspace_settings_prevent_team_id_update before
 update
     on public.slack_workspace_settings for each row execute function
 public.prevent_slack_workspace_settings_team_id_update();
+
+create trigger slack_integrations_delete_workspace_settings after delete on
+public.slack_integrations for each row execute function
+public.delete_slack_workspace_settings_for_integration();
 
 create trigger user_slack_connections_set_updated_at before
 update
