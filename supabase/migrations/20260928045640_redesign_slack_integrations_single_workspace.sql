@@ -39,6 +39,19 @@ create table public.user_slack_connections (
     unique (user_id, slack_team_id)
 );
 
+create or replace function public.prevent_slack_workspace_settings_team_id_update()
+returns trigger
+language plpgsql
+as $$
+begin
+    if new.team_id is distinct from old.team_id then
+        raise exception 'slack_workspace_settings.team_id is immutable';
+    end if;
+
+    return new;
+end;
+$$;
+
 insert into
     public.user_slack_connections (user_id, slack_team_id, slack_user_id)
 select
@@ -47,6 +60,11 @@ select
     slack_user_id
 from
     public.slack_integrations on conflict (user_id, slack_team_id) do nothing;
+
+create trigger slack_workspace_settings_prevent_team_id_update before
+update
+    on public.slack_workspace_settings for each row execute function
+public.prevent_slack_workspace_settings_team_id_update();
 
 create trigger user_slack_connections_set_updated_at before
 update
