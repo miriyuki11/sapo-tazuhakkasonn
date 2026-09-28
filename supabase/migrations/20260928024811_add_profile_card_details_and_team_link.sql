@@ -8,11 +8,11 @@ BEGIN
 	IF NOT EXISTS (
 		SELECT 1
 		FROM pg_constraint
-		WHERE conname = 'fk_team'
+		WHERE conname = 'profile_cards_team_id_fkey'
 			AND conrelid = 'public.profile_cards'::regclass
 	) THEN
 		ALTER TABLE public.profile_cards
-		ADD CONSTRAINT fk_team
+		ADD CONSTRAINT profile_cards_team_id_fkey
 		FOREIGN KEY (team_id)
 		REFERENCES public.teams(id)
 		ON DELETE SET NULL;
@@ -23,5 +23,5 @@ $$;
 COMMIT;
 
 -- Optional rollback reference:
--- ALTER TABLE public.profile_cards DROP CONSTRAINT IF EXISTS fk_team;
+-- ALTER TABLE public.profile_cards DROP CONSTRAINT IF EXISTS profile_cards_team_id_fkey;
 -- ALTER TABLE public.profile_cards DROP COLUMN IF EXISTS team_id;
