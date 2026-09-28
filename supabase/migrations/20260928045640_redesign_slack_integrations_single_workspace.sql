@@ -17,14 +17,17 @@ drop policy if exists "Users can delete own workspace settings" on public.slack_
 alter table
     public.slack_integrations
 add
-    column installer_user_id uuid references auth.users (id) on delete
-set
-    null;
+    column installer_user_id uuid references auth.users (id) on delete cascade;
 
 update
     public.slack_integrations
 set
     installer_user_id = user_id;
+
+alter table
+    public.slack_integrations
+alter column
+    installer_user_id set not null;
 
 create table public.user_slack_connections (
     id uuid primary key default gen_random_uuid(),
