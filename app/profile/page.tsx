@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   deleteProfile,
   getProfile,
@@ -15,6 +15,7 @@ export default function ProfilePage() {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
+  const toastTimeoutRef = useRef<number | null>(null);
 
   const [email, setEmail] = useState<string | null>(null);
 
@@ -27,11 +28,23 @@ export default function ProfilePage() {
   const [realtimeStatus, setRealtimeStatus] = useState("作業中💻");
 
   const showToast = (message: string) => {
+    if (toastTimeoutRef.current !== null) {
+      window.clearTimeout(toastTimeoutRef.current);
+    }
     setToast(message);
-    setTimeout(() => {
+    toastTimeoutRef.current = window.setTimeout(() => {
       setToast("");
+      toastTimeoutRef.current = null;
     }, 3000);
   };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current !== null) {
+        window.clearTimeout(toastTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let ignore = false;
@@ -125,6 +138,7 @@ export default function ProfilePage() {
     }
 
     setDeleting(true);
+    setError("");
     try {
       const { error: delErr } = await deleteProfile();
       if (delErr) {
@@ -235,6 +249,7 @@ export default function ProfilePage() {
                         borderColor: realtimeStatus === preset ? "#4a154b" : undefined,
                         backgroundColor: realtimeStatus === preset ? "#fdf4ff" : undefined,
                       }}
+                      aria-pressed={realtimeStatus === preset}
                       onClick={() => setRealtimeStatus(preset)}
                     >
                       {preset}
@@ -256,7 +271,8 @@ export default function ProfilePage() {
               </div>
 
               {/* 基本情報 */}
-              <div className="card">
+              <div               className="card"
+              role="alert">
                 <h2>自己紹介とスキル</h2>
                 <p className="card-description">
                   これまでの経歴や得意な技術、興味のある分野を入力してください。
@@ -370,6 +386,8 @@ export default function ProfilePage() {
         {toast && (
           <div
             className="toast"
+            role="status"
+            aria-live="polite"
             style={{
               position: "fixed",
               bottom: 24,
