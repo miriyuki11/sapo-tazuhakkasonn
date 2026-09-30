@@ -431,3 +431,17 @@ verify_jwt = false
 import_map = "./functions/profiles/deno.json"
 entrypoint = "./functions/profiles/index.ts"
 
+[functions.team-management]
+enabled = true
+verify_jwt = false
+import_map = "./functions/team-management/deno.json"
+entrypoint = "./functions/team-management/index.ts"
+
+[functions.teams]
+enabled = true
+verify_jwt = false
+import_map = "./functions/teams/deno.json"
+entrypoint = "./functions/teams/index.ts"
+
+
+
