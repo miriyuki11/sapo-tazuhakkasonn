@@ -29,6 +29,15 @@ export function jsonResponse(data: unknown, status = 200) {
 
 // プロフィールバリデーションスキーマ (Zod)
 // DBの profile_cards テーブルのカラムと、フロントエンドで使いやすい基本項目（bio, username, avatar_url等）をサポート
+export const PUBLIC_FIELD_KEYS = [
+  "self_introduction",
+  "skills",
+  "communication_style",
+  "consultation_style",
+  "free_description",
+  "realtime_status",
+] as const;
+
 export const profileSchema = z.object({
   self_introduction: z.string().max(2000, "自己紹介は2000文字以内で入力してください").optional().nullable(),
   bio: z.string().max(2000, "自己紹介は2000文字以内で入力してください").optional().nullable(),
@@ -42,6 +51,13 @@ export const profileSchema = z.object({
   username: z.string().min(1, "ユーザー名は1文字以上で入力してください").optional(),
   full_name: z.string().optional().nullable(),
   avatar_url: z.string().url("有効なURLを入力してください").optional().nullable(),
+  slug: z
+    .string()
+    .regex(/^[a-z0-9_-]{3,64}$/, "slugは半角小文字英数字・ハイフン・アンダースコアで3〜64文字にしてください")
+    .optional()
+    .nullable(),
+  is_public: z.boolean().optional(),
+  public_fields: z.array(z.enum(PUBLIC_FIELD_KEYS)).optional(),
 });
 
 export type ProfileInput = z.infer<typeof profileSchema>;
@@ -192,6 +208,9 @@ Deno.serve(async (req: Request) => {
             free_description,
             realtime_status,
             team_id,
+            slug,
+            is_public,
+            public_fields,
             created_at,
             updated_at,
             teams:team_id (
@@ -305,6 +324,9 @@ Deno.serve(async (req: Request) => {
               free_description: data.free_description ?? null,
               realtime_status: data.realtime_status ?? null,
               team_id: data.team_id ?? null,
+              slug: data.slug ?? null,
+              is_public: data.is_public ?? false,
+              public_fields: data.public_fields ?? [],
               updated_at: new Date().toISOString(),
             })
             .eq("id", savedCardId);
@@ -326,6 +348,9 @@ Deno.serve(async (req: Request) => {
               free_description: data.free_description ?? null,
               realtime_status: data.realtime_status ?? null,
               team_id: data.team_id ?? null,
+              slug: data.slug ?? null,
+              is_public: data.is_public ?? false,
+              public_fields: data.public_fields ?? [],
             })
             .select("id")
             .single();
@@ -380,6 +405,9 @@ Deno.serve(async (req: Request) => {
             free_description,
             realtime_status,
             team_id,
+            slug,
+            is_public,
+            public_fields,
             created_at,
             updated_at,
             teams:team_id (
@@ -465,6 +493,9 @@ Deno.serve(async (req: Request) => {
               free_description: data.free_description ?? null,
               realtime_status: data.realtime_status ?? null,
               team_id: data.team_id ?? null,
+              slug: data.slug ?? null,
+              is_public: data.is_public ?? false,
+              public_fields: data.public_fields ?? [],
             })
             .select("id")
             .single();
@@ -489,6 +520,9 @@ Deno.serve(async (req: Request) => {
           if (data.free_description !== undefined) updatePayload.free_description = data.free_description;
           if (data.realtime_status !== undefined) updatePayload.realtime_status = data.realtime_status;
           if (data.team_id !== undefined) updatePayload.team_id = data.team_id;
+          if (data.slug !== undefined) updatePayload.slug = data.slug;
+          if (data.is_public !== undefined) updatePayload.is_public = data.is_public;
+          if (data.public_fields !== undefined) updatePayload.public_fields = data.public_fields;
 
           const { error: updateError } = await supabase
             .from("profile_cards")
@@ -540,6 +574,9 @@ Deno.serve(async (req: Request) => {
             free_description,
             realtime_status,
             team_id,
+            slug,
+            is_public,
+            public_fields,
             created_at,
             updated_at,
             teams:team_id (

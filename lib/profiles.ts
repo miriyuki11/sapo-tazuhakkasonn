@@ -45,6 +45,9 @@ export type ProfileCard = {
   username?: string | null;
   full_name?: string | null;
   avatar_url?: string | null;
+  slug?: string | null;
+  is_public?: boolean;
+  public_fields?: string[];
 };
 
 export type ProfileInput = {
@@ -60,6 +63,9 @@ export type ProfileInput = {
   username?: string;
   full_name?: string | null;
   avatar_url?: string | null;
+  slug?: string | null;
+  is_public?: boolean;
+  public_fields?: PublicProfileField[];
 };
 
 export type ProfileResponse<T> = {
