@@ -1,5 +1,8 @@
 import { AuthForm } from "@/src/components/auth/AuthForm"
 import { AuthFunctionsTest } from "@/src/components/auth/AuthFunctionsTest"
+import PrivateNote from "@/components/PrivateNote/PrivateNote"
+import ProfileCard from "@/src/components/ProfileCard"
+import UserProfileCard from "@/src/components/UserProfileCard"
 
 export default function TestAuthPage() {
     return (
@@ -12,6 +15,32 @@ export default function TestAuthPage() {
                     <AuthForm />
                 </div>
                 <AuthFunctionsTest />
+                
+                {/* ステップ4: 個人メモ関連操作ボタン（編集・キャンセル・削除）を持つ UserProfileCard */}
+                <div className="w-full">
+                    <h2 className="text-lg font-bold mb-3 text-gray-700">【ステップ4 動作確認】個人メモ一覧・編集・キャンセル・削除</h2>
+                    <UserProfileCard
+                        targetUserId="sample-target-user-002"
+                        userName="鈴木 一郎"
+                        email="ichiro.suzuki@example.com"
+                        role="テックリード"
+                    />
+                </div>
+
+                {/* ステップ3: 他メンバーのプロフィールカード & 個人メモエディタ */}
+                <div className="w-full">
+                    <h2 className="text-lg font-bold mb-3 text-gray-700">【ステップ3 動作確認】プロフィールカード & 個人メモ</h2>
+                    <ProfileCard
+                        profileId="sample-target-user-001"
+                        profileName="佐藤 健太"
+                        email="kenta.sato@example.com"
+                        role="シニアエンジニア"
+                    />
+                </div>
+
+                <div className="w-full">
+                    <PrivateNote />
+                </div>
             </div>
         </main>
     )
