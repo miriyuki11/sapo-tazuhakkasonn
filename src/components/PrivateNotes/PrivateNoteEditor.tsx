@@ -217,6 +217,7 @@ export const PrivateNoteEditor: React.FC<PrivateNoteEditorProps> = ({
       {isEditing ? (
         <div>
           <textarea
+            aria-label="個人メモ"
             className="w-full p-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 text-gray-900 bg-white"
             rows={5}
             placeholder="ここにメモを入力してください (最大1000文字)"

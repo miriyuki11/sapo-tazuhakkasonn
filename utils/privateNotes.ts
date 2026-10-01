@@ -83,12 +83,17 @@ export async function createPrivateNote(
       }
     }
 
+    const trimmedContent = content.trim();
+    if (!trimmedContent || trimmedContent.length > 1000) {
+      return null;
+    }
+
     const { data, error } = await supabase
       .from("user_private_notes")
       .insert({
         author_user_id: authorId,
         target_user_id: targetUserId,
-        note_content: content,
+        note_content: trimmedContent,
       })
       .select()
       .single();
@@ -133,7 +138,11 @@ export async function updatePrivateNote(
     };
 
     if (content !== undefined) {
-      updatePayload.note_content = content;
+      const trimmedContent = content.trim();
+      if (!trimmedContent || trimmedContent.length > 1000) {
+        return null;
+      }
+      updatePayload.note_content = trimmedContent;
     }
 
     const { data, error } = await supabase
@@ -161,16 +170,18 @@ export async function updatePrivateNote(
  */
 export async function deletePrivateNote(noteId: string): Promise<boolean> {
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("user_private_notes")
       .delete()
-      .eq("id", noteId);
+      .eq("id", noteId)
+      .select("id")
+      .maybeSingle();
 
     if (error) {
       console.error("Error deleting private note:", error.message);
       return false;
     }
-    return true;
+    return Boolean(data);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("Exception in deletePrivateNote:", message);

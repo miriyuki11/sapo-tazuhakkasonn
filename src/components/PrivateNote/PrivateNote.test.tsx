@@ -58,6 +58,14 @@ describe('PrivateNote Component - ステップ4 操作ボタン機能', () => {
     expect(screen.queryByPlaceholderText('メモを編集...')).toBeNull();
   });
 
+  it('note がない場合はプレースホルダーを読み取り専用で表示する', () => {
+    render(<PrivateNote />);
+
+    expect(screen.getByText('ここに自分専用の非公開メモを記述できます。')).toBeDefined();
+    expect(screen.queryByRole('button', { name: '編集' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '削除' })).toBeNull();
+  });
+
   it('2. 編集ボタンをクリック: 編集モードに切り替わり、保存・キャンセル・削除ボタンが表示される', () => {
     render(<PrivateNote note={sampleNote} />);
 
@@ -65,6 +73,7 @@ describe('PrivateNote Component - ステップ4 操作ボタン機能', () => {
 
     const textarea = screen.getByPlaceholderText('メモを編集...') as HTMLTextAreaElement;
     expect(textarea).toBeDefined();
+    expect(textarea.getAttribute('aria-label')).toBe('メモを編集');
     expect(textarea.value).toBe('初期のメモ内容です。');
     expect(screen.getByRole('button', { name: '保存' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'キャンセル' })).toBeDefined();

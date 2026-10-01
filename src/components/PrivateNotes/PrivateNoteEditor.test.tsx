@@ -46,6 +46,7 @@ describe('PrivateNoteEditor Component', () => {
     fireEvent.click(createButton);
     expect(screen.getByText('新規個人メモ')).toBeDefined();
     expect(screen.getByPlaceholderText('ここにメモを入力してください (最大1000文字)')).toBeDefined();
+    expect(screen.getByPlaceholderText('ここにメモを入力してください (最大1000文字)').getAttribute('aria-label')).toBe('個人メモ');
     expect(screen.getByText('0/1000文字')).toBeDefined();
     expect(screen.getByRole('button', { name: '保存' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'キャンセル' })).toBeDefined();

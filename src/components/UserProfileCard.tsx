@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import PrivateNote, { PrivateNoteItem } from '@/src/components/PrivateNote/PrivateNote';
 import { supabase } from '@/lib/supabase';
 import { getPrivateNotes, createPrivateNote } from '@/utils/privateNotes';
@@ -23,6 +23,7 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = ({
   const [privateNotes, setPrivateNotes] = useState<PrivateNoteItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const fetchRequestRef = useRef(0);
 
   // 新規メモ作成用ステート
   const [newNoteContent, setNewNoteContent] = useState('');
@@ -30,6 +31,7 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = ({
   const [isSavingNew, setIsSavingNew] = useState(false);
 
   const fetchPrivateNotes = useCallback(async () => {
+    const requestId = ++fetchRequestRef.current;
     setIsLoading(true);
     setError(null);
 
@@ -38,12 +40,11 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = ({
 
       // 1. Edge Function 'private-notes' (GET) を試みる
       try {
-        const response = await supabase.functions.invoke('private-notes', {
+        const response = await supabase.functions.invoke(`private-notes?profile_user_id=${encodeURIComponent(targetUserId)}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: { profile_user_id: targetUserId, target_user_id: targetUserId },
         });
 
         if (response && !response.error && response.data) {
@@ -76,18 +77,39 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = ({
         }
       }
 
-      setPrivateNotes(notes || []);
+      if (requestId === fetchRequestRef.current) {
+        setPrivateNotes(notes || []);
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '個人メモの取得中にエラーが発生しました。';
       console.error('個人メモの取得中にエラーが発生しました:', message);
-      setError(message);
+      if (requestId === fetchRequestRef.current) {
+        setError(message);
+      }
     } finally {
-      setIsLoading(false);
+      if (requestId === fetchRequestRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [targetUserId]);
 
   useEffect(() => {
     fetchPrivateNotes();
+  }, [fetchPrivateNotes]);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        void fetchPrivateNotes();
+      } else {
+        fetchRequestRef.current++;
+        setPrivateNotes([]);
+        setError(null);
+        setIsLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [fetchPrivateNotes]);
 
   // メモの削除成功時にリストから削除する関数
@@ -220,6 +242,7 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = ({
           <div className="mb-4 p-4 border border-blue-200 rounded-lg bg-blue-50/50">
             <h5 className="text-sm font-semibold text-gray-800 mb-2">新規メモ作成</h5>
             <textarea
+              aria-label="新しいメモ"
               className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y text-gray-900 bg-white"
               value={newNoteContent}
               onChange={(e) => {

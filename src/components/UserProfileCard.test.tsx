@@ -1,12 +1,17 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { UserProfileCard } from './UserProfileCard';
 import { supabase } from '@/lib/supabase';
 import * as privateNotesUtils from '@/utils/privateNotes';
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
+    auth: {
+      onAuthStateChange: vi.fn().mockReturnValue({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      }),
+    },
     functions: {
       invoke: vi.fn(),
     },
@@ -55,7 +60,7 @@ describe('UserProfileCard Component - メモ一覧・操作管理', () => {
       },
     ];
 
-    vi.mocked(privateNotesUtils.getPrivateNotes).mockResolvedValueOnce(mockNotes as never);
+    vi.mocked(privateNotesUtils.getPrivateNotes).mockResolvedValue(mockNotes as never);
     vi.mocked(privateNotesUtils.deletePrivateNote).mockResolvedValueOnce(true);
 
     render(
@@ -75,6 +80,24 @@ describe('UserProfileCard Component - メモ一覧・操作管理', () => {
       expect(screen.getByText('一郎さん向けのメモ1')).toBeDefined();
       expect(screen.getByText('一郎さん向けのメモ2')).toBeDefined();
     });
+    expect(supabase.functions.invoke).toHaveBeenCalledWith(
+      'private-notes?profile_user_id=user-2',
+      {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+
+    const authChangeHandler = vi.mocked(supabase.auth.onAuthStateChange).mock.calls[0][0];
+    act(() => authChangeHandler('SIGNED_OUT', null));
+    expect(screen.queryByText('一郎さん向けのメモ1')).toBeNull();
+    expect(screen.queryByText('一郎さん向けのメモ2')).toBeNull();
+
+    act(() => authChangeHandler('SIGNED_IN', { user: { id: 'user-1' } } as never));
+    await waitFor(() => {
+      expect(screen.getByText('一郎さん向けのメモ1')).toBeDefined();
+      expect(privateNotesUtils.getPrivateNotes).toHaveBeenCalledTimes(2);
+    });
 
     // 1つ目のメモの「編集」をクリック
     const editButtons = screen.getAllByRole('button', { name: '編集' });
@@ -90,5 +113,12 @@ describe('UserProfileCard Component - メモ一覧・操作管理', () => {
       expect(screen.getByText('一郎さん向けのメモ2')).toBeDefined();
       expect(screen.getByText('個人メモ (1件)')).toBeDefined();
     });
+  });
+
+  it('新規メモの入力欄にアクセシブルな名前がある', () => {
+    render(<UserProfileCard targetUserId="user-2" />);
+
+    fireEvent.click(screen.getByRole('button', { name: '＋ メモを追加' }));
+    expect(screen.getByRole('textbox', { name: '新しいメモ' })).toBeDefined();
   });
 });

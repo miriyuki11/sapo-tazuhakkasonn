@@ -27,7 +27,6 @@ export const signUpUser = async (
       ...(options ? { options } : {}),
     });
     if (error) throw error;
-    console.log("User signed up successfully:", data);
     return { data, error: null };
   } catch (error: unknown) {
     const authError = error as AuthError | Error;
@@ -55,7 +54,6 @@ export const signInUser = async (
       password,
     });
     if (error) throw error;
-    console.log("User signed in successfully:", data);
     return { data, error: null };
   } catch (error: unknown) {
     const authError = error as AuthError | Error;
@@ -97,7 +95,6 @@ export const getCurrentSession = async (): Promise<{
       error,
     } = await supabase.auth.getSession();
     if (error) throw error;
-    console.log("Current session:", session);
     return { session, error: null };
   } catch (error: unknown) {
     const authError = error as AuthError | Error;

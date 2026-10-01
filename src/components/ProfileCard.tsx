@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase'; // Supabaseクライアントをインポート
 import { PrivateNoteEditor, PrivateNote } from './PrivateNotes/PrivateNoteEditor'; // 作成したエディタコンポーネントをインポート
 
@@ -25,6 +25,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
 
   // 現在のユーザーのセッション情報を取得
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const fetchRequestRef = useRef(0);
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -38,7 +39,14 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setCurrentUserId(session?.user?.id || null);
+      const userId = session?.user?.id || null;
+      setCurrentUserId(userId);
+      if (!userId) {
+        fetchRequestRef.current++;
+        setMyPrivateNote(undefined);
+        setFetchError(null);
+        setIsLoadingNote(false);
+      }
     });
 
     return () => {
@@ -48,7 +56,10 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
 
   // このプロフィールに対する現在のユーザーの個人メモを取得
   const fetchPrivateNote = useCallback(async () => {
+    const requestId = ++fetchRequestRef.current;
     if (!currentUserId) {
+      setMyPrivateNote(undefined);
+      setFetchError(null);
       setIsLoadingNote(false);
       return;
     }
@@ -60,12 +71,11 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
 
       // 1. Edge Function 'private-notes' の呼び出しを試みる
       try {
-        const response = await supabase.functions.invoke('private-notes', {
+        const response = await supabase.functions.invoke(`private-notes?profile_user_id=${encodeURIComponent(profileId)}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: { profile_user_id: profileId },
         });
 
         if (!response.error && response.data) {
@@ -98,12 +108,18 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
         }));
       }
 
-      setMyPrivateNote(notes && notes.length > 0 ? notes[0] : undefined);
+      if (requestId === fetchRequestRef.current) {
+        setMyPrivateNote(notes && notes.length > 0 ? notes[0] : undefined);
+      }
     } catch (err) {
       console.error('Failed to fetch private note:', err);
-      setFetchError(err instanceof Error ? err.message : 'メモの取得に失敗しました。');
+      if (requestId === fetchRequestRef.current) {
+        setFetchError(err instanceof Error ? err.message : 'メモの取得に失敗しました。');
+      }
     } finally {
-      setIsLoadingNote(false);
+      if (requestId === fetchRequestRef.current) {
+        setIsLoadingNote(false);
+      }
     }
   }, [currentUserId, profileId]);
 

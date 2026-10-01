@@ -51,6 +51,10 @@ Deno.serve(async (req: Request) => {
     const { data: userData } = token ? await supabase.auth.getUser(token) : { data: { user: null } }
     const currentUserId = userData?.user?.id
 
+    if (!currentUserId) {
+      return jsonResponse({ error: 'Unauthorized' }, 401)
+    }
+
     const url = new URL(req.url)
     const method = req.method
 
@@ -173,9 +177,12 @@ Deno.serve(async (req: Request) => {
         query = query.eq('author_user_id', currentUserId)
       }
 
-      const { error } = await query
+      const { data, error } = await query.select('id').maybeSingle()
       if (error) {
         return jsonResponse({ error: error.message }, 500)
+      }
+      if (!data) {
+        return jsonResponse({ error: 'Note not found' }, 404)
       }
 
       return jsonResponse({ message: 'Note deleted successfully', id: noteId }, 200)

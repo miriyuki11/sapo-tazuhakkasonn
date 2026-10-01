@@ -32,11 +32,13 @@ const defaultPlaceholderNote: PrivateNoteItem = {
  * 表示モードと編集モードの切り替え、保存、キャンセル、削除機能を提供します。
  */
 export const PrivateNote: React.FC<PrivateNoteProps> = ({
-  note = defaultPlaceholderNote,
+  note,
   onDeleteSuccess,
   onUpdateSuccess,
 }) => {
-  const noteText = note.content || note.note_content || '';
+  const isPlaceholder = !note;
+  const displayedNote = note ?? defaultPlaceholderNote;
+  const noteText = displayedNote.content || displayedNote.note_content || '';
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(noteText);
   const [originalContent, setOriginalContent] = useState(noteText); // キャンセル用
@@ -45,10 +47,13 @@ export const PrivateNote: React.FC<PrivateNoteProps> = ({
 
   // note.content が変更された場合に、editedContentとoriginalContentを更新
   useEffect(() => {
-    const text = note.content || note.note_content || '';
+    const text = displayedNote.content || displayedNote.note_content || '';
     setEditedContent(text);
     setOriginalContent(text);
-  }, [note.content, note.note_content]);
+    if (!note) {
+      setIsEditing(false);
+    }
+  }, [displayedNote.content, displayedNote.note_content, note]);
 
   const handleEditClick = () => {
     setIsEditing(true);
@@ -84,8 +89,8 @@ export const PrivateNote: React.FC<PrivateNoteProps> = ({
         const response = await supabase.functions.invoke('private-notes', {
           method: 'PUT',
           body: {
-            id: note.id,
-            note_id: note.id,
+            id: displayedNote.id,
+            note_id: displayedNote.id,
             content: trimmed,
             note_content: trimmed,
           },
@@ -94,11 +99,11 @@ export const PrivateNote: React.FC<PrivateNoteProps> = ({
         if (response && !response.error && response.data) {
           const res = response.data?.note || response.data;
           updatedData = {
-            id: res.id || note.id,
+            id: res.id || displayedNote.id,
             content: res.content || res.note_content || trimmed,
             note_content: res.note_content || res.content || trimmed,
-            target_user_id: res.target_user_id || note.target_user_id,
-            created_at: res.created_at || note.created_at,
+            target_user_id: res.target_user_id || displayedNote.target_user_id,
+            created_at: res.created_at || displayedNote.created_at,
             updated_at: res.updated_at || new Date().toISOString(),
           };
         }
@@ -108,7 +113,7 @@ export const PrivateNote: React.FC<PrivateNoteProps> = ({
 
       // 2. フォールバック: utils/privateNotes (直接DB操作)
       if (!updatedData) {
-        const updated = await updatePrivateNote(note.id, {
+        const updated = await updatePrivateNote(displayedNote.id, {
           note_content: trimmed,
         });
         if (updated) {
@@ -131,7 +136,7 @@ export const PrivateNote: React.FC<PrivateNoteProps> = ({
             note_content: trimmed,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', note.id)
+          .eq('id', displayedNote.id)
           .select()
           .single();
 
@@ -177,7 +182,7 @@ export const PrivateNote: React.FC<PrivateNoteProps> = ({
         try {
           const response = await supabase.functions.invoke('private-notes', {
             method: 'DELETE',
-            body: { id: note.id, note_id: note.id },
+            body: { id: displayedNote.id, note_id: displayedNote.id },
           });
           if (response && !response.error) {
             deleted = true;
@@ -188,22 +193,24 @@ export const PrivateNote: React.FC<PrivateNoteProps> = ({
 
         // 2. フォールバック: utils/privateNotes
         if (!deleted) {
-          deleted = await deletePrivateNote(note.id);
+          deleted = await deletePrivateNote(displayedNote.id);
         }
 
         // 3. テーブル直接操作フォールバック
         if (!deleted) {
-          const { error: dbError } = await supabase
+          const { data, error: dbError } = await supabase
             .from('user_private_notes')
             .delete()
-            .eq('id', note.id);
-          if (!dbError) {
+            .eq('id', displayedNote.id)
+            .select('id')
+            .maybeSingle();
+          if (!dbError && data) {
             deleted = true;
           }
         }
 
         if (deleted) {
-          onDeleteSuccess?.(note.id); // 親コンポーネントに削除成功を通知
+          onDeleteSuccess?.(displayedNote.id); // 親コンポーネントに削除成功を通知
           alert('メモが削除されました。');
         } else {
           throw new Error('メモの削除に失敗しました。');
@@ -225,6 +232,7 @@ export const PrivateNote: React.FC<PrivateNoteProps> = ({
         // 編集モードUI
         <>
           <textarea
+            aria-label="メモを編集"
             className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y text-gray-900 bg-white"
             value={editedContent}
             onChange={(e) => {
@@ -241,7 +249,7 @@ export const PrivateNote: React.FC<PrivateNoteProps> = ({
             {editedContent.length}/1000
           </p>
           {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
-          <div className="flex justify-end gap-2 mt-4">
+          {!isPlaceholder && <div className="flex justify-end gap-2 mt-4">
             <button
               type="button"
               onClick={handleSave}
@@ -266,13 +274,13 @@ export const PrivateNote: React.FC<PrivateNoteProps> = ({
             >
               削除
             </button>
-          </div>
+          </div>}
         </>
       ) : (
         // 表示モードUI
         <>
           <p className="text-gray-800 whitespace-pre-wrap">{editedContent || noteText}</p>
-          <div className="flex justify-end gap-2 mt-4">
+          {!isPlaceholder && <div className="flex justify-end gap-2 mt-4">
             <button
               type="button"
               onClick={handleEditClick}
@@ -288,7 +296,7 @@ export const PrivateNote: React.FC<PrivateNoteProps> = ({
             >
               削除
             </button>
-          </div>
+          </div>}
         </>
       )}
     </div>
