@@ -46,16 +46,19 @@ Deno.serve(async (request: Request) => {
     const signingSecret = Deno.env.get("SLACK_SIGNING_SECRET");
     const rawBody = await request.text();
 
-    if (signingSecret) {
-        const isValid = await verifySlackSignature({
-            signingSecret,
-            signature: request.headers.get("x-slack-signature"),
-            timestamp: request.headers.get("x-slack-request-timestamp"),
-            rawBody,
-        });
-        if (!isValid) {
-            return new Response("Unauthorized", { status: 401 });
-        }
+    if (!signingSecret) {
+        console.error("SLACK_SIGNING_SECRET is not configured");
+        return new Response("Server configuration error", { status: 500 });
+    }
+
+    const isValid = await verifySlackSignature({
+        signingSecret,
+        signature: request.headers.get("x-slack-signature"),
+        timestamp: request.headers.get("x-slack-request-timestamp"),
+        rawBody,
+    });
+    if (!isValid) {
+        return new Response("Unauthorized", { status: 401 });
     }
 
     const payload: unknown = JSON.parse(rawBody);
