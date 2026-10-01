@@ -305,7 +305,7 @@ Deno.serve(async (request: Request) => {
   }
 
      return Response.json({
-      response_type: "ephemeral",
+      response_type: "in_channel",
       blocks,
     });
   })();
