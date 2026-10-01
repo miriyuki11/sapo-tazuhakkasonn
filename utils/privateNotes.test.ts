@@ -139,7 +139,8 @@ describe("privateNotes CRUD functions", () => {
 
   describe("deletePrivateNote", () => {
     it("deletes note by id and returns true on success", async () => {
-      const eqMock = vi.fn().mockResolvedValue({ error: null });
+      const selectMock = vi.fn().mockResolvedValue({ data: [{ id: "note-to-delete" }], error: null });
+      const eqMock = vi.fn().mockReturnValue({ select: selectMock });
       const deleteMock = vi.fn().mockReturnValue({ eq: eqMock });
       vi.mocked(supabase.from).mockReturnValue({ delete: deleteMock } as never);
 
@@ -147,6 +148,7 @@ describe("privateNotes CRUD functions", () => {
 
       expect(supabase.from).toHaveBeenCalledWith("user_private_notes");
       expect(eqMock).toHaveBeenCalledWith("id", "note-to-delete");
+      expect(selectMock).toHaveBeenCalledWith("id");
       expect(result).toBe(true);
     });
   });

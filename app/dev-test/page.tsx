@@ -88,6 +88,7 @@ export default function DevTestPage() {
     addLog("--- Supabase 個人メモ CRUD 自動テスト開始 ---");
 
     try {
+      let allPassed = true;
       // 1. CREATE (作成)
       addLog("=== 1. ノート作成テスト (createPrivateNote) ===");
       const testContent = `Supabaseクライアント検証メモ (${new Date().toLocaleTimeString()})`;
@@ -97,6 +98,7 @@ export default function DevTestPage() {
       });
 
       if (!created) {
+        allPassed = false;
         addLog("❌ メモの作成に失敗したため、テストを中断します。");
         setIsRunning(false);
         return;
@@ -107,7 +109,12 @@ export default function DevTestPage() {
       // 2. READ (取得) - 作成後
       addLog("=== 2. 全てのメモ取得テスト (getPrivateNotes) ===");
       const notesAfterCreate = await getPrivateNotes();
-      addLog(`✅ 取得完了 (${notesAfterCreate?.length ?? 0}件)`, notesAfterCreate);
+      const createReadPassed = !!notesAfterCreate?.some((note) => note.id === testNoteId);
+      allPassed &&= createReadPassed;
+      addLog(
+        `${createReadPassed ? "✅" : "❌"} 取得完了 (${notesAfterCreate?.length ?? 0}件)`,
+        notesAfterCreate
+      );
       if (notesAfterCreate) setNotes(notesAfterCreate);
 
       // 3. UPDATE (更新)
@@ -118,15 +125,25 @@ export default function DevTestPage() {
       });
 
       if (updated) {
-        addLog(`✅ メモ更新成功: "${updated.note_content}"`, updated);
+        const updatePassed = updated.note_content === updatedContent;
+        allPassed &&= updatePassed;
+        addLog(`${updatePassed ? "✅" : "❌"} メモ更新成功: "${updated.note_content}"`, updated);
       } else {
+        allPassed = false;
         addLog("❌ メモの更新に失敗しました。");
       }
 
       // 4. READ (取得) - 更新後
       addLog("=== 4. 更新後のメモ取得確認 ===");
       const notesAfterUpdate = await getPrivateNotes();
-      addLog(`✅ 更新後のメモ一覧取得 (${notesAfterUpdate?.length ?? 0}件)`, notesAfterUpdate);
+      const updateReadPassed = !!notesAfterUpdate?.some(
+        (note) => note.id === testNoteId && note.note_content === updatedContent
+      );
+      allPassed &&= updateReadPassed;
+      addLog(
+        `${updateReadPassed ? "✅" : "❌"} 更新後のメモ一覧取得 (${notesAfterUpdate?.length ?? 0}件)`,
+        notesAfterUpdate
+      );
       if (notesAfterUpdate) setNotes(notesAfterUpdate);
 
       // 5. DELETE (削除)
@@ -135,16 +152,27 @@ export default function DevTestPage() {
       if (deleted) {
         addLog(`✅ メモ (ID: ${testNoteId}) 削除成功`);
       } else {
+        allPassed = false;
         addLog(`❌ メモ (ID: ${testNoteId}) 削除失敗`);
       }
 
       // 6. READ (取得) - 削除後
       addLog("=== 6. 削除後のメモ取得確認 ===");
       const notesAfterDelete = await getPrivateNotes();
-      addLog(`✅ 削除後のメモ一覧取得 (${notesAfterDelete?.length ?? 0}件)`, notesAfterDelete);
+      const deleteReadPassed =
+        !!notesAfterDelete && !notesAfterDelete.some((note) => note.id === testNoteId);
+      allPassed &&= deleteReadPassed;
+      addLog(
+        `${deleteReadPassed ? "✅" : "❌"} 削除後のメモ一覧取得 (${notesAfterDelete?.length ?? 0}件)`,
+        notesAfterDelete
+      );
       if (notesAfterDelete) setNotes(notesAfterDelete);
 
-      addLog("--- 🎉 Supabase 個人メモ CRUD テスト全ステップ成功完了 ---");
+      addLog(
+        allPassed
+          ? "--- 🎉 Supabase 個人メモ CRUD テスト全ステップ成功完了 ---"
+          : "--- ❌ Supabase 個人メモ CRUD テストに失敗したステップがあります ---"
+      );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       addLog(`❌ 予期せぬエラー: ${message}`);
@@ -301,10 +329,11 @@ export default function DevTestPage() {
               <form onSubmit={handleManualCreate} className="mt-4 space-y-3">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                    <label htmlFor="target-user-id" className="block text-xs font-medium text-slate-600 dark:text-slate-300">
                       対象ユーザーID (target_user_id)
                     </label>
                     <input
+                      id="target-user-id"
                       type="text"
                       value={targetUserIdInput}
                       onChange={(e) => setTargetUserIdInput(e.target.value)}
@@ -313,10 +342,11 @@ export default function DevTestPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+                    <label htmlFor="note-content" className="block text-xs font-medium text-slate-600 dark:text-slate-300">
                       メモ本文 (note_content)
                     </label>
                     <input
+                      id="note-content"
                       type="text"
                       value={newContentInput}
                       onChange={(e) => setNewContentInput(e.target.value)}

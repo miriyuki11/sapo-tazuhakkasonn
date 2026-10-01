@@ -1,7 +1,24 @@
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = "https://ccarnmeqioneyfnjrlva.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_PVvn9xKKuAaLg2Ew5AzPgg_q2x3-5Wk";
+const {
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+  SUPABASE_SERVICE_ROLE_KEY,
+  SUPABASE_TEST_EMAIL,
+  SUPABASE_TEST_PASSWORD,
+} = process.env;
+
+if (
+  !SUPABASE_URL ||
+  !SUPABASE_ANON_KEY ||
+  !SUPABASE_SERVICE_ROLE_KEY ||
+  !SUPABASE_TEST_EMAIL ||
+  !SUPABASE_TEST_PASSWORD
+) {
+  throw new Error(
+    "Set SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_TEST_EMAIL, and SUPABASE_TEST_PASSWORD."
+  );
+}
 
 console.log("=================================================");
 console.log("Supabase Auth & 個人メモCRUD 動作確認スクリプト");
@@ -24,12 +41,14 @@ async function runVerification() {
   // 1. Supabaseクライアントの初期化
   console.log("\n--- 1. Supabase クライアント初期化確認 ---");
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   assert(!!supabase && !!supabase.auth, "Supabaseクライアントが正常に初期化されている");
 
   // 2. ユーザー登録機能のテスト (signUp)
   console.log("\n--- 2. ユーザー登録機能のテスト ---");
-  const randomEmail = `sapo_auto_test_${Date.now()}@gmail.com`;
-  const testPassword = "Password123!";
+  const randomEmail = `sapo_auto_test_${Date.now()}@example.invalid`;
+  const testPassword = SUPABASE_TEST_PASSWORD;
+  let disposableUserId = null;
   try {
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: randomEmail,
@@ -40,20 +59,20 @@ async function runVerification() {
       `新規ユーザー登録 (signUp): ${randomEmail}`,
       signUpError?.message
     );
+    disposableUserId = signUpData.user?.id ?? null;
   } catch (err) {
     assert(false, "新規ユーザー登録で例外発生", String(err));
   }
 
   // 3. ユーザーログイン機能のテスト (signInWithPassword)
   console.log("\n--- 3. ユーザーログイン機能のテスト ---");
-  const testEmail = "sapo_test_user_a@gmail.com";
+  const testEmail = SUPABASE_TEST_EMAIL;
   let authUser = null;
-  let session = null;
   try {
     const { data: signInData, error: signInError } =
       await supabase.auth.signInWithPassword({
         email: testEmail,
-        password: "Password123!",
+        password: testPassword,
       });
 
     assert(
@@ -62,7 +81,6 @@ async function runVerification() {
       signInError?.message
     );
     authUser = signInData.user;
-    session = signInData.session;
   } catch (err) {
     assert(false, "ログイン処理で例外発生", String(err));
   }
@@ -237,9 +255,18 @@ async function runVerification() {
     assert(false, "未認証INSERTで例外", String(err));
   }
 
+  if (disposableUserId) {
+    const { error: cleanupError } = await admin.auth.admin.deleteUser(disposableUserId);
+    assert(!cleanupError, "使い捨てテストユーザーの削除", cleanupError?.message);
+  }
+
   console.log("\n=================================================");
   console.log(`検証結果サマリー: PASS = ${passCount}, FAIL = ${failCount}`);
   console.log("=================================================");
+  process.exitCode = failCount > 0 ? 1 : 0;
 }
 
-runVerification();
+runVerification().catch((err) => {
+  console.error("Verification failed:", err);
+  process.exitCode = 1;
+});
