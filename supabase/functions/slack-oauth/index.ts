@@ -3,6 +3,11 @@ import { createClient } from "@supabase/supabase-js";
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "http://localhost:3000",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+};
 
 declare const Deno: {
   env: {
@@ -14,6 +19,11 @@ declare const Deno: {
 };
 
 Deno.serve(async (request: Request) => {
+    if (request.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  const response = await (async () => {
   const url = new URL(request.url);
 
   if (request.method === "POST") {
@@ -101,7 +111,7 @@ Deno.serve(async (request: Request) => {
 
     const authorizeUrl = new URL("https://slack.com/oauth/v2/authorize");
     authorizeUrl.searchParams.set("client_id", slackClientId);
-    authorizeUrl.searchParams.set("scope", "commands,links:read,links:write");
+    authorizeUrl.searchParams.set("scope", "commands,links:read,links:write,users:read");
     authorizeUrl.searchParams.set("user_scope", "users:read");
     authorizeUrl.searchParams.set("redirect_uri", slackRedirectUri);
     authorizeUrl.searchParams.set("state", state);
@@ -311,5 +321,17 @@ Deno.serve(async (request: Request) => {
     return Response.json({ connected: true });
   }
 
-  return Response.json({ error: "Not found" }, { status: 404 });
+      return Response.json({ error: "Not found" }, { status: 404 });
+  })();
+
+  const headers = new Headers(response.headers);
+  for (const [name, value] of Object.entries(corsHeaders)) {
+    headers.set(name, value);
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 });

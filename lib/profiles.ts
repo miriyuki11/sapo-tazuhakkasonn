@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
 export type TagCategory = {
@@ -65,6 +66,85 @@ export type ProfileResponse<T> = {
   data: T | null;
   error: string | null;
 };
+
+export const PUBLIC_PROFILE_FIELD_LABELS = {
+  self_introduction: "自己紹介",
+  skills: "スキル・得意分野",
+  communication_style: "コミュニケーションスタイル",
+  consultation_style: "相談スタイル",
+  free_description: "自由記述",
+  realtime_status: "ステータス",
+} as const;
+
+export type PublicProfileField = keyof typeof PUBLIC_PROFILE_FIELD_LABELS;
+
+export type PublicProfileCard = {
+  slug: string;
+  self_introduction: string | null;
+  skills: string | null;
+  communication_style: string | null;
+  consultation_style: string | null;
+  free_description: string | null;
+  realtime_status: string | null;
+};
+
+/**
+ * 公開プロフィールカードを slug で検索する（未認証・公開ページ用）
+ * is_public = true の行のみ RLS 経由で取得される
+ */
+export async function getPublicProfileBySlug(
+  slug: string
+): Promise<PublicProfileCard | null> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Missing Supabase environment variables.");
+  }
+
+  const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false },
+  });
+
+  const { data, error } = await anonClient
+    .from("profile_cards")
+    .select(
+      "slug, is_public, public_fields, self_introduction, skills, communication_style, consultation_style, free_description, realtime_status"
+    )
+    .eq("slug", slug)
+    .eq("is_public", true)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to fetch public profile:", error);
+    return null;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const allowedFields = new Set<string>(
+    Array.isArray(data.public_fields) ? data.public_fields : []
+  );
+
+  const row = data as unknown as Record<PublicProfileField | "slug", unknown>;
+
+  const pick = (field: PublicProfileField): string | null =>
+    allowedFields.has(field) && typeof row[field] === "string"
+      ? (row[field] as string)
+      : null;
+
+  return {
+    slug: data.slug,
+    self_introduction: pick("self_introduction"),
+    skills: pick("skills"),
+    communication_style: pick("communication_style"),
+    consultation_style: pick("consultation_style"),
+    free_description: pick("free_description"),
+    realtime_status: pick("realtime_status"),
+  };
+}
 
 /**
  * プロフィール情報を取得する

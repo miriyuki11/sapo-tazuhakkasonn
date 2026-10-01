@@ -455,3 +455,15 @@ entrypoint = "./functions/slack-oauth/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/slack-oauth/*.html" ]
+
+
+[functions.slack-slash-command]
+enabled = true
+verify_jwt = false
+import_map = "./functions/slack-slash-command/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/slack-slash-command/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/slack-slash-command/*.html" ]

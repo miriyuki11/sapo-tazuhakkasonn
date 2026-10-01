@@ -8,6 +8,7 @@ import {
   saveProfile,
 } from "@/lib/profiles";
 import { supabase } from "@/lib/supabase";
+import { SlackConnectButton } from "@/src/components/integrations/SlackConnectButton";
 
 export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
@@ -203,6 +204,14 @@ export default function ProfilePage() {
               </p>
             </div>
           </div>
+
+          <section className="card" aria-labelledby="slack-connection-heading">
+            <h2 id="slack-connection-heading">Slack連携</h2>
+            <p className="card-description">
+              Slackアカウントを連携して、Slackからプロフィールカードを参照できるようにします。
+            </p>
+            <SlackConnectButton />
+          </section>
 
           {loading ? (
             <div className="card">
