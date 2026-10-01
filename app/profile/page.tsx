@@ -213,6 +213,7 @@ export default function ProfilePage() {
               {error && (
                 <div
                   className="card"
+                  role="alert"
                   style={{
                     backgroundColor: "#fef2f2",
                     borderColor: "#f87171",
@@ -271,8 +272,7 @@ export default function ProfilePage() {
               </div>
 
               {/* 基本情報 */}
-              <div               className="card"
-              role="alert">
+              <div className="card">
                 <h2>自己紹介とスキル</h2>
                 <p className="card-description">
                   これまでの経歴や得意な技術、興味のある分野を入力してください。
