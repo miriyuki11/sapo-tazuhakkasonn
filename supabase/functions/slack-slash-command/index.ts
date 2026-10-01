@@ -70,23 +70,24 @@ Deno.serve(async (request: Request) => {
   const signingSecret = Deno.env.get("SLACK_SIGNING_SECRET");
   const rawBody = await request.text();
 
-  if (signingSecret) {
-    const signature = request.headers.get("x-slack-signature");
-    const timestamp = request.headers.get("x-slack-request-timestamp");
+  if (!signingSecret) {
+    console.error("SLACK_SIGNING_SECRET is not configured");
+    return new Response("Server configuration error", { status: 500 });
+  }
 
-    const isValid = await verifySlackSignature({
-      signingSecret,
-      signature,
-      timestamp,
-      rawBody,
-    });
+  const signature = request.headers.get("x-slack-signature");
+  const timestamp = request.headers.get("x-slack-request-timestamp");
 
-    if (!isValid) {
-      console.error("Invalid Slack signature received");
-      return new Response("Unauthorized", { status: 401 });
-    }
-  } else {
-    console.warn("SLACK_SIGNING_SECRET is not configured; skipping signature verification");
+  const isValid = await verifySlackSignature({
+    signingSecret,
+    signature,
+    timestamp,
+    rawBody,
+  });
+
+  if (!isValid) {
+    console.error("Invalid Slack signature received");
+    return new Response("Unauthorized", { status: 401 });
   }
 
   // Slack slash command から送信された x-www-form-urlencoded ペイロードを解析
