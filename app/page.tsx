@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Member = {
@@ -334,6 +335,16 @@ export default function Home() {
         >
           ＋ チームを作成
         </button>
+        <div className="side-section-title">
+          個人設定
+        </div>
+        <Link
+          href="/profile"
+          className="side-item"
+          style={{ textDecoration: "none" }}
+        >
+          👤 マイプロフィール
+        </Link>
       </aside>
       <main className="main">
         <header className="topbar">
