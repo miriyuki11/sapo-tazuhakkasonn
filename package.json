@@ -1,6 +1,6 @@
 {
-  "name": "introcard",
-  "version": "0.1.0",
+  "name": "team-profile-slack-app",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
