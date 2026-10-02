@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
 export type TagCategory = {
@@ -44,6 +45,9 @@ export type ProfileCard = {
   username?: string | null;
   full_name?: string | null;
   avatar_url?: string | null;
+  slug?: string | null;
+  is_public?: boolean;
+  public_fields?: string[];
 };
 
 export type ProfileInput = {
@@ -59,12 +63,82 @@ export type ProfileInput = {
   username?: string;
   full_name?: string | null;
   avatar_url?: string | null;
+  slug?: string | null;
+  is_public?: boolean;
+  public_fields?: PublicProfileField[];
 };
 
 export type ProfileResponse<T> = {
   data: T | null;
   error: string | null;
 };
+
+export const PUBLIC_PROFILE_FIELD_LABELS = {
+  self_introduction: "自己紹介",
+  skills: "スキル・得意分野",
+  communication_style: "コミュニケーションスタイル",
+  consultation_style: "相談スタイル",
+  free_description: "自由記述",
+  realtime_status: "ステータス",
+} as const;
+
+export type PublicProfileField = keyof typeof PUBLIC_PROFILE_FIELD_LABELS;
+
+export type PublicProfileCard = {
+  slug: string;
+  self_introduction: string | null;
+  skills: string | null;
+  communication_style: string | null;
+  consultation_style: string | null;
+  free_description: string | null;
+  realtime_status: string | null;
+};
+
+/**
+ * 公開プロフィールカードを slug で検索する（未認証・公開ページ用）
+ * is_public = true の行のみ RLS 経由で取得される
+ */
+export async function getPublicProfileBySlug(
+  slug: string
+): Promise<PublicProfileCard | null> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Missing Supabase environment variables.");
+  }
+
+  const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false },
+  });
+
+  const { data, error } = await anonClient
+    .from("public_profile_cards")
+    .select(
+      "slug, self_introduction, skills, communication_style, consultation_style, free_description, realtime_status"
+    )
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to fetch public profile:", error);
+    return null;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return {
+    slug: data.slug,
+    self_introduction: data.self_introduction,
+    skills: data.skills,
+    communication_style: data.communication_style,
+    consultation_style: data.consultation_style,
+    free_description: data.free_description,
+    realtime_status: data.realtime_status,
+  };
+}
 
 /**
  * プロフィール情報を取得する
@@ -185,4 +259,3 @@ export async function getTagCategories(): Promise<ProfileResponse<TagCategory[]>
     return { data: null, error: message };
   }
 }
-

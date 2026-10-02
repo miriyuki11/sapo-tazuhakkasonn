@@ -6,8 +6,15 @@ import {
   deleteProfile,
   getProfile,
   saveProfile,
+  PUBLIC_PROFILE_FIELD_LABELS,
+  type PublicProfileField,
 } from "@/lib/profiles";
 import { supabase } from "@/lib/supabase";
+import { SlackConnectButton } from "@/src/components/integrations/SlackConnectButton";
+
+const PUBLIC_FIELD_OPTIONS = Object.keys(
+  PUBLIC_PROFILE_FIELD_LABELS
+) as PublicProfileField[];
 
 export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
@@ -26,6 +33,12 @@ export default function ProfilePage() {
   const [consultationStyle, setConsultationStyle] = useState("");
   const [freeDescription, setFreeDescription] = useState("");
   const [realtimeStatus, setRealtimeStatus] = useState("作業中💻");
+
+  // 公開設定ステート
+  const [slug, setSlug] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
+  const [publicFields, setPublicFields] = useState<PublicProfileField[]>([]);
+  const [slugError, setSlugError] = useState("");
 
   const showToast = (message: string) => {
     if (toastTimeoutRef.current !== null) {
@@ -81,6 +94,11 @@ export default function ProfilePage() {
           if (profile.realtime_status) {
             setRealtimeStatus(profile.realtime_status);
           }
+          setSlug(profile.slug || "");
+          setIsPublic(Boolean(profile.is_public));
+          setPublicFields(
+            (profile.public_fields as PublicProfileField[] | undefined) ?? []
+          );
         }
       } catch (err: unknown) {
         console.error(err);
@@ -106,6 +124,15 @@ export default function ProfilePage() {
     e.preventDefault();
     setSaving(true);
     setError("");
+    setSlugError("");
+
+    if (isPublic && !/^[a-z0-9_-]{3,64}$/.test(slug)) {
+      setSlugError(
+        "公開URLは半角小文字英数字・ハイフン・アンダースコアで3〜64文字にしてください"
+      );
+      setSaving(false);
+      return;
+    }
 
     try {
       const { error: saveErr } = await saveProfile({
@@ -115,6 +142,9 @@ export default function ProfilePage() {
         consultation_style: consultationStyle,
         free_description: freeDescription,
         realtime_status: realtimeStatus,
+        slug: slug || null,
+        is_public: isPublic,
+        public_fields: publicFields,
       });
 
       if (saveErr) {
@@ -204,6 +234,14 @@ export default function ProfilePage() {
             </div>
           </div>
 
+          <section className="card" aria-labelledby="slack-connection-heading">
+            <h2 id="slack-connection-heading">Slack連携</h2>
+            <p className="card-description">
+              Slackアカウントを連携して、Slackからプロフィールカードを参照できるようにします。
+            </p>
+            <SlackConnectButton />
+          </section>
+
           {loading ? (
             <div className="card">
               <div className="empty">プロフィールを読み込み中...</div>
@@ -225,7 +263,71 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              {/* リアルタイムステータス */}
+              {/* 公開設定 */}
+              <div className="card">
+                <h2>公開プロフィールカード設定</h2>
+                <p className="card-description">
+                  公開を有効にすると、URLを知っている誰でもこのプロフィールカードを閲覧できます(Slackのリンクプレビューにも使われます)。
+                </p>
+                <div className="form-row">
+                  <label className="form-label" htmlFor="is-public">
+                    <input
+                      id="is-public"
+                      type="checkbox"
+                      checked={isPublic}
+                      onChange={(e) => setIsPublic(e.target.checked)}
+                      style={{ marginRight: 8 }}
+                    />
+                    プロフィールカードを公開する
+                  </label>
+                </div>
+                <div className="form-row">
+                  <label className="form-label" htmlFor="slug">
+                    公開URL用スラッグ
+                  </label>
+                  <input
+                    id="slug"
+                    className="input"
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value)}
+                    placeholder="例: taro-yamada"
+                  />
+                  {slugError && (
+                    <p style={{ color: "#991b1b", fontSize: 13, marginTop: 4 }}>
+                      {slugError}
+                    </p>
+                  )}
+                  {isPublic && slug && !slugError && (
+                    <p style={{ fontSize: 13, color: "#6b696b", marginTop: 4 }}>
+                      公開URL: /profile/{slug}
+                    </p>
+                  )}
+                </div>
+                <div className="form-row">
+                  <span className="form-label">公開する項目</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {PUBLIC_FIELD_OPTIONS.map((field) => (
+                      <label key={field} style={{ fontSize: 14 }}>
+                        <input
+                          type="checkbox"
+                          checked={publicFields.includes(field)}
+                          onChange={(e) => {
+                            setPublicFields((current) =>
+                              e.target.checked
+                                ? [...current, field]
+                                : current.filter((f) => f !== field)
+                            );
+                          }}
+                          style={{ marginRight: 8 }}
+                        />
+                        {PUBLIC_PROFILE_FIELD_LABELS[field]}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+
               <div className="card">
                 <h2>リアルタイムステータス</h2>
                 <p className="card-description">
