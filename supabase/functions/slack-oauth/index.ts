@@ -3,11 +3,23 @@ import { createClient } from "@supabase/supabase-js";
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "http://localhost:3000",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-};
+const allowedOrigins = new Set([
+  "http://localhost:3000",
+  "https://introcard-one.vercel.app",
+]);
+
+function getCorsHeaders(request: Request) {
+  const origin = request.headers.get("Origin");
+  return {
+    ...(origin && allowedOrigins.has(origin)
+      ? { "Access-Control-Allow-Origin": origin }
+      : {}),
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    Vary: "Origin",
+  };
+}
 
 declare const Deno: {
   env: {
@@ -19,8 +31,8 @@ declare const Deno: {
 };
 
 Deno.serve(async (request: Request) => {
-    if (request.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+  if (request.method === "OPTIONS") {
+    return new Response("ok", { headers: getCorsHeaders(request) });
   }
 
   const response = await (async () => {
@@ -325,7 +337,7 @@ Deno.serve(async (request: Request) => {
   })();
 
   const headers = new Headers(response.headers);
-  for (const [name, value] of Object.entries(corsHeaders)) {
+  for (const [name, value] of Object.entries(getCorsHeaders(request))) {
     headers.set(name, value);
   }
 

@@ -113,12 +113,11 @@ export async function getPublicProfileBySlug(
   });
 
   const { data, error } = await anonClient
-    .from("profile_cards")
+    .from("public_profile_cards")
     .select(
-      "slug, is_public, public_fields, self_introduction, skills, communication_style, consultation_style, free_description, realtime_status"
+      "slug, self_introduction, skills, communication_style, consultation_style, free_description, realtime_status"
     )
     .eq("slug", slug)
-    .eq("is_public", true)
     .maybeSingle();
 
   if (error) {
@@ -130,25 +129,14 @@ export async function getPublicProfileBySlug(
     return null;
   }
 
-  const allowedFields = new Set<string>(
-    Array.isArray(data.public_fields) ? data.public_fields : []
-  );
-
-  const row = data as unknown as Record<PublicProfileField | "slug", unknown>;
-
-  const pick = (field: PublicProfileField): string | null =>
-    allowedFields.has(field) && typeof row[field] === "string"
-      ? (row[field] as string)
-      : null;
-
   return {
     slug: data.slug,
-    self_introduction: pick("self_introduction"),
-    skills: pick("skills"),
-    communication_style: pick("communication_style"),
-    consultation_style: pick("consultation_style"),
-    free_description: pick("free_description"),
-    realtime_status: pick("realtime_status"),
+    self_introduction: data.self_introduction,
+    skills: data.skills,
+    communication_style: data.communication_style,
+    consultation_style: data.consultation_style,
+    free_description: data.free_description,
+    realtime_status: data.realtime_status,
   };
 }
 
@@ -271,4 +259,3 @@ export async function getTagCategories(): Promise<ProfileResponse<TagCategory[]>
     return { data: null, error: message };
   }
 }
-

@@ -12,8 +12,6 @@ declare const EdgeRuntime: {
     waitUntil(promise: Promise<unknown>): void;
 };
 
-const SLACK_BOT_TOKEN = Deno.env.get("SLACK_BOT_TOKEN");
-
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null;
 }
@@ -72,7 +70,8 @@ Deno.serve(async (request: Request) => {
     }
 
     const event = isRecord(payload.event) ? payload.event : null;
-    if (event?.type === "link_shared" && SLACK_BOT_TOKEN) {
+    const teamId = payload.team_id;
+    if (event?.type === "link_shared" && typeof teamId === "string") {
         const channel = event.channel;
         const ts = event.message_ts;
         const links = Array.isArray(event.links) ? event.links : [];
@@ -82,11 +81,21 @@ Deno.serve(async (request: Request) => {
             EdgeRuntime.waitUntil(
                 (async () => {
                     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-                    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-                    if (!supabaseUrl || !anonKey) return;
-                    const supabase = createClient(supabaseUrl, anonKey, {
+                    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+                    if (!supabaseUrl || !serviceRoleKey) return;
+                    const supabase = createClient(supabaseUrl, serviceRoleKey, {
                         auth: { persistSession: false },
                     });
+
+                    const { data: integration, error: integrationError } = await supabase
+                        .from("slack_integrations")
+                        .select("access_token")
+                        .eq("team_id", teamId)
+                        .maybeSingle();
+                    if (integrationError || !integration?.access_token) {
+                        console.error("Failed to load Slack workspace token:", integrationError);
+                        return;
+                    }
 
                     const unfurls: Record<string, unknown> = {};
                     for (const link of links) {
@@ -94,12 +103,10 @@ Deno.serve(async (request: Request) => {
                         const match = link.url.match(/\/profile\/([^/?#]+)/);
                         if (!match) continue;
                         const slug = decodeURIComponent(match[1]);
-
                         const { data: card } = await supabase
-                            .from("profile_cards")
+                            .from("public_profile_cards")
                             .select("slug, self_introduction, skills")
                             .eq("slug", slug)
-                            .eq("is_public", true)
                             .maybeSingle();
 
                         if (card) {
@@ -112,7 +119,7 @@ Deno.serve(async (request: Request) => {
                     }
 
                     if (Object.keys(unfurls).length > 0) {
-                        await chatUnfurl(SLACK_BOT_TOKEN, channel, ts, unfurls);
+                        await chatUnfurl(integration.access_token, channel, ts, unfurls);
                     }
                 })(),
             );
