@@ -1,7 +1,22 @@
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = "https://ccarnmeqioneyfnjrlva.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_PVvn9xKKuAaLg2Ew5AzPgg_q2x3-5Wk";
+const {
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+  SUPABASE_TEST_EMAIL,
+  SUPABASE_TEST_PASSWORD,
+} = process.env;
+
+if (
+  !SUPABASE_URL ||
+  !SUPABASE_ANON_KEY ||
+  !SUPABASE_TEST_EMAIL ||
+  !SUPABASE_TEST_PASSWORD
+) {
+  throw new Error(
+    "Set SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_TEST_EMAIL, and SUPABASE_TEST_PASSWORD."
+  );
+}
 
 console.log("=================================================");
 console.log("Supabase Auth & 個人メモCRUD 動作確認スクリプト");
@@ -26,15 +41,16 @@ async function runVerification() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   assert(!!supabase && !!supabase.auth, "Supabaseクライアントが正常に初期化されている");
 
+  const testPassword = SUPABASE_TEST_PASSWORD;
   // 2. ユーザーログイン機能のテスト (signInWithPassword)
   console.log("\n--- 2. ユーザーログイン機能のテスト ---");
-  const testEmail = "sapo_test_user_a@gmail.com";
+  const testEmail = SUPABASE_TEST_EMAIL;
   let authUser = null;
   try {
     const { data: signInData, error: signInError } =
       await supabase.auth.signInWithPassword({
         email: testEmail,
-        password: "Password123!",
+        password: testPassword,
       });
 
     assert(
@@ -220,6 +236,10 @@ async function runVerification() {
   console.log("\n=================================================");
   console.log(`検証結果サマリー: PASS = ${passCount}, FAIL = ${failCount}`);
   console.log("=================================================");
+  process.exitCode = failCount > 0 ? 1 : 0;
 }
 
-runVerification();
+runVerification().catch((err) => {
+  console.error("Verification failed:", err);
+  process.exitCode = 1;
+});

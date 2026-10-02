@@ -117,7 +117,6 @@ export const getUser = async (): Promise<{
       error,
     } = await supabase.auth.getUser();
     if (error) throw error;
-    console.log("Current user:", user);
     return { user, error: null };
   } catch (error: unknown) {
     const authError = error as AuthError | Error;
@@ -125,3 +124,37 @@ export const getUser = async (): Promise<{
     return { user: null, error: authError };
   }
 };
+
+export const resetPassword = async (
+  email: string,
+  redirectTo?: string
+): Promise<{ error: AuthError | Error | null }> => {
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      ...(redirectTo ? { redirectTo } : {}),
+    });
+    if (error) throw error;
+    return { error: null };
+  } catch (error: unknown) {
+    const authError = error as AuthError | Error;
+    console.error("Error resetting password:", authError.message);
+    return { error: authError };
+  }
+};
+
+export const updateUserPassword = async (
+  password: string
+): Promise<{ error: AuthError | Error | null }> => {
+  try {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+    return { error: null };
+  } catch (error: unknown) {
+    const authError = error as AuthError | Error;
+    console.error("Error updating password:", authError.message);
+    return { error: authError };
+  }
+};
+
+export const getUserSession = getCurrentSession;
+export const getCurrentUser = getUser;

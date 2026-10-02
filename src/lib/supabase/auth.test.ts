@@ -6,6 +6,8 @@ import {
   signOutUser,
   getCurrentSession,
   getUser,
+  resetPassword,
+  updateUserPassword,
 } from "./auth";
 import type { Session, User, AuthError } from "@supabase/supabase-js";
 
@@ -17,6 +19,8 @@ vi.mock("./client", () => ({
       signOut: vi.fn(),
       getSession: vi.fn(),
       getUser: vi.fn(),
+      resetPasswordForEmail: vi.fn(),
+      updateUser: vi.fn(),
     },
   },
 }));
@@ -182,6 +186,28 @@ describe("Supabase Auth Wrapper Functions", () => {
 
       expect(result.user).toBeNull();
       expect(result.error).toBe(mockError);
+    });
+
+    describe("password helpers", () => {
+      it("requests a password reset", async () => {
+        vi.mocked(supabase.auth.resetPasswordForEmail).mockResolvedValue({ error: null } as never);
+
+        const result = await resetPassword("test@example.com", "https://example.com/reset");
+
+        expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith("test@example.com", {
+          redirectTo: "https://example.com/reset",
+        });
+        expect(result.error).toBeNull();
+      });
+
+      it("updates the current user's password", async () => {
+        vi.mocked(supabase.auth.updateUser).mockResolvedValue({ data: { user: null }, error: null } as never);
+
+        const result = await updateUserPassword("new-password");
+
+        expect(supabase.auth.updateUser).toHaveBeenCalledWith({ password: "new-password" });
+        expect(result.error).toBeNull();
+      });
     });
   });
 });

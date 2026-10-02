@@ -19,6 +19,11 @@ export type UpdatePrivateNoteInput = {
   content?: string;
 };
 
+const normalizeNoteContent = (content: string): string | null => {
+  const normalized = content.trim();
+  return normalized.length > 0 && normalized.length <= 1000 ? normalized : null;
+};
+
 /**
  * 現在認証されているユーザーの個人メモ一覧を取得します。
  * targetUserId を指定した場合は、そのユーザーに対するメモのみをフィルタします。
@@ -83,8 +88,9 @@ export async function createPrivateNote(
       }
     }
 
-    const trimmedContent = content.trim();
-    if (!trimmedContent || trimmedContent.length > 1000) {
+    const normalizedContent = normalizeNoteContent(content);
+    if (!normalizedContent) {
+      console.error("Error creating private note: note_content must be 1-1000 characters.");
       return null;
     }
 
@@ -93,7 +99,7 @@ export async function createPrivateNote(
       .insert({
         author_user_id: authorId,
         target_user_id: targetUserId,
-        note_content: trimmedContent,
+        note_content: normalizedContent,
       })
       .select()
       .single();
@@ -138,11 +144,12 @@ export async function updatePrivateNote(
     };
 
     if (content !== undefined) {
-      const trimmedContent = content.trim();
-      if (!trimmedContent || trimmedContent.length > 1000) {
+      const normalizedContent = normalizeNoteContent(content);
+      if (!normalizedContent) {
+        console.error("Error updating private note: note_content must be 1-1000 characters.");
         return null;
       }
-      updatePayload.note_content = trimmedContent;
+      updatePayload.note_content = normalizedContent;
     }
 
     const { data, error } = await supabase
@@ -174,14 +181,13 @@ export async function deletePrivateNote(noteId: string): Promise<boolean> {
       .from("user_private_notes")
       .delete()
       .eq("id", noteId)
-      .select("id")
-      .maybeSingle();
+      .select("id");
 
     if (error) {
       console.error("Error deleting private note:", error.message);
       return false;
     }
-    return Boolean(data);
+    return !!data?.length;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("Exception in deletePrivateNote:", message);

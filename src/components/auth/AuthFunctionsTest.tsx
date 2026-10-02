@@ -101,10 +101,11 @@ export function AuthFunctionsTest() {
 
       <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
         <div>
-          <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+          <label htmlFor="auth-test-email" className="block text-xs font-medium text-slate-600 dark:text-slate-300">
             テスト用メールアドレス
           </label>
           <input
+            id="auth-test-email"
             type="email"
             value={testEmail}
             onChange={(e) => setTestEmail(e.target.value)}
@@ -112,10 +113,11 @@ export function AuthFunctionsTest() {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+          <label htmlFor="auth-test-password" className="block text-xs font-medium text-slate-600 dark:text-slate-300">
             テスト用パスワード
           </label>
           <input
+            id="auth-test-password"
             type="password"
             value={testPassword}
             onChange={(e) => setTestPassword(e.target.value)}
