@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import PrivateNote from "@/components/PrivateNote/PrivateNote";
 
 type Member = {
   id: string;
@@ -367,6 +368,10 @@ export default function Home() {
                 チームの基本情報とメンバーを管理します。
               </p>
             </div>
+          </div>
+          {/* 個人メモUIコンポーネント (ステップ1 動作確認用) */}
+          <div className="mb-6 max-w-md">
+            <PrivateNote />
           </div>
           <div className="card">
             <h2>

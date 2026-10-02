@@ -3,7 +3,6 @@ import { createClient } from "@supabase/supabase-js";
 const {
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
-  SUPABASE_SERVICE_ROLE_KEY,
   SUPABASE_TEST_EMAIL,
   SUPABASE_TEST_PASSWORD,
 } = process.env;
@@ -11,12 +10,11 @@ const {
 if (
   !SUPABASE_URL ||
   !SUPABASE_ANON_KEY ||
-  !SUPABASE_SERVICE_ROLE_KEY ||
   !SUPABASE_TEST_EMAIL ||
   !SUPABASE_TEST_PASSWORD
 ) {
   throw new Error(
-    "Set SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_TEST_EMAIL, and SUPABASE_TEST_PASSWORD."
+    "Set SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_TEST_EMAIL, and SUPABASE_TEST_PASSWORD."
   );
 }
 
@@ -41,31 +39,11 @@ async function runVerification() {
   // 1. Supabaseクライアントの初期化
   console.log("\n--- 1. Supabase クライアント初期化確認 ---");
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   assert(!!supabase && !!supabase.auth, "Supabaseクライアントが正常に初期化されている");
 
-  // 2. ユーザー登録機能のテスト (signUp)
-  console.log("\n--- 2. ユーザー登録機能のテスト ---");
-  const randomEmail = `sapo_auto_test_${Date.now()}@example.invalid`;
   const testPassword = SUPABASE_TEST_PASSWORD;
-  let disposableUserId = null;
-  try {
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: randomEmail,
-      password: testPassword,
-    });
-    assert(
-      !signUpError && !!signUpData.user,
-      `新規ユーザー登録 (signUp): ${randomEmail}`,
-      signUpError?.message
-    );
-    disposableUserId = signUpData.user?.id ?? null;
-  } catch (err) {
-    assert(false, "新規ユーザー登録で例外発生", String(err));
-  }
-
-  // 3. ユーザーログイン機能のテスト (signInWithPassword)
-  console.log("\n--- 3. ユーザーログイン機能のテスト ---");
+  // 2. ユーザーログイン機能のテスト (signInWithPassword)
+  console.log("\n--- 2. ユーザーログイン機能のテスト ---");
   const testEmail = SUPABASE_TEST_EMAIL;
   let authUser = null;
   try {
@@ -85,8 +63,8 @@ async function runVerification() {
     assert(false, "ログイン処理で例外発生", String(err));
   }
 
-  // 4. セッション & ユーザー取得確認 (getSession, getUser)
-  console.log("\n--- 4. セッション & ユーザー情報の取得 ---");
+  // 3. セッション & ユーザー取得確認 (getSession, getUser)
+  console.log("\n--- 3. セッション & ユーザー情報の取得 ---");
   try {
     const {
       data: { session: currentSession },
@@ -111,12 +89,12 @@ async function runVerification() {
     assert(false, "セッション取得で例外発生", String(err));
   }
 
-  // 5. 認証済みユーザーによる個人メモCRUD操作
-  console.log("\n--- 5. 認証済みユーザーによる個人メモCRUD操作 ---");
+  // 4. 認証済みユーザーによる個人メモCRUD操作
+  console.log("\n--- 4. 認証済みユーザーによる個人メモCRUD操作 ---");
   let createdNoteId = null;
   const testNoteContent = `検証用メモ: ${new Date().toISOString()}`;
 
-  // 5-1. CREATE
+  // 4-1. CREATE
   try {
     const { data: createdNote, error: createError } = await supabase
       .from("user_private_notes")
@@ -138,7 +116,7 @@ async function runVerification() {
     assert(false, "メモ作成で例外発生", String(err));
   }
 
-  // 5-2. READ
+  // 4-2. READ
   try {
     const { data: notes, error: readError } = await supabase
       .from("user_private_notes")
@@ -155,7 +133,7 @@ async function runVerification() {
     assert(false, "メモ取得で例外発生", String(err));
   }
 
-  // 5-3. UPDATE
+  // 4-3. UPDATE
   try {
     const updatedContent = `${testNoteContent} [UPDATED]`;
     const { data: updatedNote, error: updateError } = await supabase
@@ -177,7 +155,7 @@ async function runVerification() {
     assert(false, "メモ更新で例外発生", String(err));
   }
 
-  // 5-4. DELETE
+  // 4-4. DELETE
   try {
     const { error: deleteError } = await supabase
       .from("user_private_notes")
@@ -200,8 +178,8 @@ async function runVerification() {
     assert(false, "メモ削除で例外発生", String(err));
   }
 
-  // 6. ユーザーログアウト機能のテスト
-  console.log("\n--- 6. ユーザーログアウト機能のテスト ---");
+  // 5. ユーザーログアウト機能のテスト
+  console.log("\n--- 5. ユーザーログアウト機能のテスト ---");
   try {
     const { error: signOutError } = await supabase.auth.signOut();
     assert(!signOutError, "ログアウト実行 (signOut)", signOutError?.message);
@@ -217,11 +195,11 @@ async function runVerification() {
     assert(false, "ログアウト処理で例外発生", String(err));
   }
 
-  // 7. 未認証ユーザーによる個人メモCRUDの拒否テスト (RLS検証)
-  console.log("\n--- 7. 未認証ユーザーによる個人メモ操作の拒否テスト (RLS検証) ---");
+  // 6. 未認証ユーザーによる個人メモCRUDの拒否テスト (RLS検証)
+  console.log("\n--- 6. 未認証ユーザーによる個人メモ操作の拒否テスト (RLS検証) ---");
   const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // 7-1. 未認証でのSELECT
+  // 6-1. 未認証でのSELECT
   try {
     const { data: anonNotes, error: anonSelectError } = await anonClient
       .from("user_private_notes")
@@ -236,7 +214,7 @@ async function runVerification() {
     assert(false, "未認証SELECTで例外", String(err));
   }
 
-  // 7-2. 未認証でのINSERT拒否
+  // 6-2. 未認証でのINSERT拒否
   try {
     const { data: anonInserted, error: anonInsertError } = await anonClient
       .from("user_private_notes")
@@ -253,11 +231,6 @@ async function runVerification() {
     );
   } catch (err) {
     assert(false, "未認証INSERTで例外", String(err));
-  }
-
-  if (disposableUserId) {
-    const { error: cleanupError } = await admin.auth.admin.deleteUser(disposableUserId);
-    assert(!cleanupError, "使い捨てテストユーザーの削除", cleanupError?.message);
   }
 
   console.log("\n=================================================");

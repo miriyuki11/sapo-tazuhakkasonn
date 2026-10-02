@@ -98,7 +98,7 @@ describe("privateNotes CRUD functions", () => {
 
       const result = await createPrivateNote({
         target_user_id: "target-user-999",
-        note_content: "Test content",
+        note_content: " Test content ",
       });
 
       expect(insertMock).toHaveBeenCalledWith({
@@ -107,6 +107,21 @@ describe("privateNotes CRUD functions", () => {
         note_content: "Test content",
       });
       expect(result).toEqual(mockCreated);
+    });
+
+    it("trims content and rejects empty or oversized notes", async () => {
+      const mockUser = { id: "logged-in-user" } as unknown as User;
+      vi.mocked(supabase.auth.getUser).mockResolvedValue({
+        data: { user: mockUser },
+        error: null,
+      } as never);
+
+      const insertMock = vi.fn();
+      vi.mocked(supabase.from).mockReturnValue({ insert: insertMock } as never);
+
+      expect(await createPrivateNote({ note_content: "   " })).toBeNull();
+      expect(await createPrivateNote({ note_content: "a".repeat(1001) })).toBeNull();
+      expect(insertMock).not.toHaveBeenCalled();
     });
   });
 
@@ -128,18 +143,33 @@ describe("privateNotes CRUD functions", () => {
       vi.mocked(supabase.from).mockReturnValue({ update: updateMock } as never);
 
       const result = await updatePrivateNote("note-1", {
-        note_content: "Updated content",
+        note_content: " Updated content ",
       });
 
       expect(supabase.from).toHaveBeenCalledWith("user_private_notes");
       expect(eqMock).toHaveBeenCalledWith("id", "note-1");
+      expect(updateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ note_content: "Updated content" })
+      );
       expect(result).toEqual(mockUpdated);
+    });
+
+    it("trims content and rejects empty or oversized updates", async () => {
+      const updateMock = vi.fn();
+      vi.mocked(supabase.from).mockReturnValue({ update: updateMock } as never);
+
+      expect(await updatePrivateNote("note-1", { note_content: "   " })).toBeNull();
+      expect(await updatePrivateNote("note-1", { note_content: "a".repeat(1001) })).toBeNull();
+      expect(updateMock).not.toHaveBeenCalled();
     });
   });
 
   describe("deletePrivateNote", () => {
     it("deletes note by id and returns true on success", async () => {
-      const selectMock = vi.fn().mockResolvedValue({ data: [{ id: "note-to-delete" }], error: null });
+      const selectMock = vi.fn().mockResolvedValue({
+        data: [{ id: "note-to-delete" }],
+        error: null,
+      });
       const eqMock = vi.fn().mockReturnValue({ select: selectMock });
       const deleteMock = vi.fn().mockReturnValue({ eq: eqMock });
       vi.mocked(supabase.from).mockReturnValue({ delete: deleteMock } as never);
@@ -150,6 +180,16 @@ describe("privateNotes CRUD functions", () => {
       expect(eqMock).toHaveBeenCalledWith("id", "note-to-delete");
       expect(selectMock).toHaveBeenCalledWith("id");
       expect(result).toBe(true);
+    });
+
+    it("returns false when no row was deleted", async () => {
+      const maybeSingleMock = vi.fn().mockResolvedValue({ data: null, error: null });
+      const selectMock = vi.fn().mockReturnValue({ maybeSingle: maybeSingleMock });
+      const eqMock = vi.fn().mockReturnValue({ select: selectMock });
+      const deleteMock = vi.fn().mockReturnValue({ eq: eqMock });
+      vi.mocked(supabase.from).mockReturnValue({ delete: deleteMock } as never);
+
+      expect(await deletePrivateNote("missing-note")).toBe(false);
     });
   });
 });

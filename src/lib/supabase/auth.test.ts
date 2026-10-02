@@ -53,6 +53,7 @@ describe("Supabase Auth Wrapper Functions", () => {
       });
       expect(result.data).toEqual(mockData);
       expect(result.error).toBeNull();
+      expect(console.log).not.toHaveBeenCalled();
     });
 
     it("handles sign up error gracefully", async () => {
@@ -86,6 +87,7 @@ describe("Supabase Auth Wrapper Functions", () => {
       });
       expect(result.data).toEqual({ user: mockUser, session: mockSession });
       expect(result.error).toBeNull();
+      expect(console.log).not.toHaveBeenCalled();
     });
 
     it("handles invalid credentials error", async () => {
@@ -141,6 +143,7 @@ describe("Supabase Auth Wrapper Functions", () => {
       expect(supabase.auth.getSession).toHaveBeenCalled();
       expect(result.session).toEqual(mockSession);
       expect(result.error).toBeNull();
+      expect(console.log).not.toHaveBeenCalled();
     });
 
     it("handles session retrieval error", async () => {
